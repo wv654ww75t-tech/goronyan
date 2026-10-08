@@ -286,6 +286,14 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
 .shtime input[type=number]{width:72px}
 .shb{display:flex;align-items:center;gap:6px;font-size:.9rem}
 #shSave{margin-top:8px}
+.notice-set{display:flex;flex-wrap:wrap;gap:8px}
+.ntv{position:fixed;inset:0;z-index:60;display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(96px + env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.25)}
+.ntv[hidden]{display:none}
+.ntc{background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:14px 16px;max-width:420px;width:100%;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.ntc .nh{display:flex;align-items:center;gap:10px;font-family:var(--hand);font-weight:var(--hw);font-size:1.1rem}
+.ntc .nh svg{width:44px;height:44px;flex:none}
+.ntc ul{margin:8px 0 4px;padding-left:1.2em}
+.ntc small{color:var(--muted)}
 .shifts{display:flex;flex-wrap:wrap;gap:8px}
 .shifts button{min-height:44px;padding:0 16px;border:2px solid transparent;border-radius:22px;color:#43322a;font-weight:700}
 .shifts button[aria-pressed="true"]{border-color:var(--ink)}
@@ -753,6 +761,13 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
           <div class="roomtxt"><b id="lvTxt">Lv.1</b><small id="lvSub"></small><div class="bar"><div id="lvBar"></div></div></div>
         </div>
         <div class="posepick" id="posePick"></div>
+        <h3>おしらせ <small>アプリを開いたときに猫が教えてくれるよ</small></h3>
+        <div class="act notice-set" id="noticeSet">
+          <button class="btn sm" id="ntOn" type="button" aria-pressed="true">🔔 おしらせ</button>
+          <button class="btn sm" id="ntEv" type="button" aria-pressed="true">予定</button>
+          <button class="btn sm" id="ntTd" type="button" aria-pressed="true">ToDo</button>
+          <button class="btn sm" id="ntHb" type="button" aria-pressed="true">習慣</button>
+        </div>
         <p class="dhint" style="margin:0 0 4px">好きな猫ちゃん・色・フォントをえらんでね</p>
         <h3>猫ちゃん <small data-free="cat" data-base=""></small></h3>
         <div class="pick" id="catPick"></div>
@@ -772,6 +787,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
 
   </div>
   <div class="imgv" id="imgV" hidden><div class="imgbox"><img id="imgOut" alt="書き出した画像"><p>画像を長押しして保存するか、下のボタンで保存・共有してにゃ。プリントしてアナログ手帳にもはれるよ</p><div class="imgbtn"><button class="pill" id="imgShare" type="button">保存・共有</button><button class="pill" id="imgClose" type="button">とじる</button></div></div></div>
+  <div class="ntv" id="ntV" hidden><div class="ntc" id="ntC" role="status"></div></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <nav class="tabs" role="tablist" aria-label="ページ">
     <button class="tab" role="tab" aria-selected="true" type="button">カレンダー</button>
@@ -1619,6 +1635,37 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     }
   }
 
+  // ===== 開いたときのおしらせ
+  function ntCfg(){ var n=ROOT._notice; if(!n||typeof n!=='object') n=ROOT._notice={on:true,ev:true,td:true,hb:true}; return n; }
+  function noticeLines(){
+    var n=ntCfg(), info=dayInfo(todayKey), lines=[], sh=info.p.shiftType&&SHIFT_BY[info.p.shiftType];
+    if(ROOT._mode==='work'&&sh) lines.push('今日のシフトは'+sh[1]+(info.p.shiftS?'（'+info.p.shiftS+(info.p.shiftE?'〜'+info.p.shiftE:'')+'）':'')+'にゃ');
+    if(n.ev&&info.evs.length){ lines.push('予定が'+info.evs.length+'つあるよ'); info.evs.slice(0,3).forEach(function(e){ lines.push('　'+(e.time?e.time+' ':'')+e.text); }); }
+    if(n.td){ var left=info.tds.filter(function(t){return !t.done;}).length; if(left) lines.push('ToDoがあと'+left+'つ残ってるよ'); }
+    if(n.hb&&ROOT._mode!=='work'){ var hb=data._habits.filter(function(h){return !info.p.habits[h.id];}).map(function(h){return h.name;}); if(hb.length) lines.push('今日の習慣: '+hb.slice(0,3).join('、')+(hb.length>3?' ほか':'')); }
+    return lines;
+  }
+  var ntT=0, lastNt=0;
+  function showNotice(force){
+    var n=ntCfg(); if(!n.on&&!force) return;
+    var lines=noticeLines(); if(!lines.length){ if(force) toast('今日はおしらせすることがないにゃ'); return; }
+    var h=new Date().getHours(), hi=h<5?'こんばんは':h<11?'おはよう':h<18?'こんにちは':'こんばんは';
+    var c=$('ntC'); c.textContent='';
+    var hd=el('div','nh'); hd.appendChild(icon('s0')); hd.appendChild(el('span',null,hi+'にゃ🐱')); c.appendChild(hd);
+    var ul=el('ul'); lines.forEach(function(l){ var li=el('li',null,l.replace(/^　/,'')); if(/^　/.test(l)) li.style.listStyle='none'; ul.appendChild(li); }); c.appendChild(ul);
+    c.appendChild(el('small',null,'タップでとじるよ'));
+    $('ntV').hidden=false; lastNt=Date.now(); clearTimeout(ntT); ntT=setTimeout(function(){ $('ntV').hidden=true; },15000);
+  }
+  function initNotice(){
+    $('ntV').addEventListener('click',function(){ $('ntV').hidden=true; });
+    var map={ntOn:'on',ntEv:'ev',ntTd:'td',ntHb:'hb'};
+    function paint(){ var n=ntCfg(); Object.keys(map).forEach(function(id){ $(id).setAttribute('aria-pressed',String(!!n[map[id]])); }); }
+    Object.keys(map).forEach(function(id){ $(id).addEventListener('click',function(){ var n=ntCfg(); n[map[id]]=!n[map[id]]; save(); paint(); if(id==='ntOn'&&n.on) showNotice(true); }); });
+    paint();
+    setTimeout(function(){ showNotice(false); },700);
+    document.addEventListener('visibilitychange',function(){ if(!document.hidden&&Date.now()-lastNt>3*3600*1000){ showNotice(false); } });
+  }
+
   // ===== 季節・ねこの成長
   var LV=[0,15,40,80,150];
   var POSES=[['sit','おすわり',1],['loaf','こうばこ',2],['yawn','あくび',3],['sleep','ねんね',4]];
@@ -1988,7 +2035,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
 
   initExtras();
   initWork();
-  initGrow(); initPresets(); initImg();
+  initGrow(); initPresets(); initImg(); initNotice();
   applyTheme();
   applyMode();
   renderAll();
