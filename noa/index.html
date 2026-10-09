@@ -107,7 +107,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .feed{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:12px}
 .feed p{margin:0;font-size:.85rem;color:var(--muted)}
 .feed .row b{width:5em}
-.feed input[type=number]{width:4.5em}
+.feed input[type=number]{width:5em;box-sizing:border-box}
+.feed input[type=time]{min-width:6.5em;box-sizing:border-box}
+button:disabled,input:disabled,select:disabled{opacity:.45;cursor:default}
 .annis{display:flex;flex-wrap:wrap;gap:6px}
 #annis:empty,#alerts:empty{display:none}
 .annis span{background:var(--accent-soft);border:1px solid var(--line);border-radius:999px;padding:4px 12px;font-size:.85rem}
@@ -699,6 +701,7 @@ function renderSettings(){
   var off=!loaded||readonly||!db;
   safeSet($("settings"),
     '<div class="row"><label for="nick">記録に出る名前</label><input type="text" id="nick" maxlength="12" value="'+esc(myNick()||me.name)+'"'+(off?" disabled":"")+'><button type="button" class="ghost" id="savenick"'+(off?" disabled":"")+">保存</button></div>"+
+    (db?"":'<p class="empty">ノートに入ると、ここの設定が使えるようになります。カレンダーのページの上の「はじめに」から進んでね。</p>')+
     '<div class="feed"><p>いつものごはんを決めておくと、ごはんのボタンを押したときにこの時間と内容で記録されます。空のままなら、押したときの時間になります。</p>'+
     MEALS.map(function(m){var f=feedOf(m[0]);
       return '<div class="row"><b>'+m[1]+'</b><input type="time" id="ft-'+m[0]+'" aria-label="'+m[1]+'の時間" value="'+esc(f.t||"")+'"'+(off?" disabled":"")+'>'+
