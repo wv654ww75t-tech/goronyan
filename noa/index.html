@@ -947,9 +947,15 @@ document.addEventListener("click",function(ev){
   if(b.id==="savenick0"){var n0=$("nick0").value;$("nick0").blur();return saveNick(n0)}
   if(b.id==="savebday"){var v2=$("bday").value;$("bday").blur();if(!v2)return toast("日付をえらんでね。");return db.doc("meta/noa").set(Object.assign({},meta,{birthday:v2})).then(function(){toast("お誕生日を保存しました。")},fail)}
 });
+// time pickers save when they close, so the wheel can be scrolled freely
+document.addEventListener("focusout",function(ev){
+  var t=ev.target;if(!db||readonly||!t.dataset||!t.dataset.time||!t.value)return;
+  var e=entriesOf(cur).filter(function(x){return x.id===t.dataset.time})[0];
+  if(!e||hm(e.at)===t.value){render();return}
+  var p=t.value.split(":");patchEntry(t.dataset.time,{at:atFor(cur,+p[0],+p[1])});toast("時間を "+t.value+" にしました。");
+});
 document.addEventListener("change",function(ev){
   var t=ev.target;if(!db||readonly)return;
-  if(t.dataset&&t.dataset.time&&t.value){var p=t.value.split(":");t.blur();patchEntry(t.dataset.time,{at:atFor(cur,+p[0],+p[1])})}
   if(t.dataset&&t.dataset.num){var g=parseFloat(t.value);t.blur();patchEntry(t.dataset.num,{g:g>0&&g<=500?Math.round(g):""})}
   if(t.dataset&&t.dataset.note){patchEntry(t.dataset.note,{n:t.value.trim().slice(0,60)})}
   if(t.id==="restorefile"&&t.files&&t.files[0]){
