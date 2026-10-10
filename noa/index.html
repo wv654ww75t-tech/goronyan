@@ -97,7 +97,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .photo{display:block;width:100%;border-radius:18px;border:1px solid var(--line)}
 .photo{cursor:zoom-in}
 #viewer{position:fixed;inset:0;z-index:20;background:rgba(40,30,15,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top,0px)) 12px calc(16px + env(safe-area-inset-bottom,0px))}
-#viewer img{max-width:100%;max-height:calc(100% - 84px);object-fit:contain;border-radius:14px}
+#vcount{color:#FFFFFF;font-variant-numeric:tabular-nums;min-width:3em;text-align:center}
+#viewer img{max-width:100%;max-height:calc(100% - 150px);object-fit:contain;border-radius:14px}
 #viewer .row{justify-content:center}
 .photos{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .photos.one{grid-template-columns:1fr}
@@ -219,7 +220,7 @@ label{font-size:.9rem;color:var(--muted)}
   <details data-p="home"><summary>設定（名前・ごはんの時間・合言葉・バックアップ）</summary><div class="sec" id="settings"></div></details>
 </div>
 <nav id="tabs" aria-label="ページ"><div></div></nav>
-<div id="viewer" hidden role="dialog" aria-label="写真を大きく表示"><img id="viewimg" alt="のあちゃんの写真"><div class="row"><button type="button" class="primary" id="savephoto">写真を保存する</button><button type="button" class="ghost" id="closeviewer">とじる</button></div></div>
+<div id="viewer" hidden role="dialog" aria-label="写真を大きく表示"><img id="viewimg" alt="のあちゃんの写真"><div class="row" id="vnav" hidden><button type="button" class="ghost" id="vprev" aria-label="前の写真">‹</button><span id="vcount"></span><button type="button" class="ghost" id="vnext" aria-label="次の写真">›</button></div><div class="row"><button type="button" class="primary" id="savephoto">写真を保存する</button><button type="button" class="ghost" id="closeviewer">とじる</button></div></div>
 <div id="toast" aria-live="polite"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -377,7 +378,7 @@ function renderCal(){
     var ph=dd&&typeof dd.ph==="string"&&dd.ph.indexOf("data:image/")===0?dd.ph:"";
     h+='<button type="button" data-go="'+k+'" class="'+(has?"has ":"")+(ph?"pic ":"")+(k===cur?"sel ":"")+(k===today?"today":"")+'"'+(k>today?" disabled":"")+' aria-label="'+m+"月"+d+"日"+(has?" 記録あり":"")+(ph?" 写真あり":"")+'">'+(ph?'<img alt="" src="'+esc(ph)+'"><b>'+d+"</b>":d)+"</button>";
   }
-  box.innerHTML=h+'</div><p class="calnote">黄色の点は記録がある日。写真をのこした日は写真が出ます。日付を押してから、下のボタンでその日のページへ。</p>';
+  box.innerHTML=h+'</div><p class="calnote">黄色の点は記録がある日。写真をのこした日は写真が出て、押すと大きく見られます。日付を押してから、下のボタンでその日のページへ。</p>';
 }
 function editHtml(e){
   var h='<div class="edit"><label for="t-'+e.id+'">時間</label><input type="time" id="t-'+e.id+'" data-time="'+e.id+'" value="'+hm(e.at)+'">';
@@ -443,7 +444,7 @@ function photoList(){
 function renderPhoto(off){
   var l=photoList(),h="";
   if(l.length)h+='<div class="photos'+(l.length===1?" one":"")+'">'+l.map(function(p){
-    return '<figure><img class="photo" data-zoom="1" tabindex="0" role="button" alt="この日ののあちゃん（押すと大きく表示）" src="'+esc(p.img)+'"><figcaption><span>'+esc(who(p))+"</span>"+
+    return '<figure><img class="photo" data-zoom="'+l.indexOf(p)+'" tabindex="0" role="button" alt="この日ののあちゃん（押すと大きく表示）" src="'+esc(p.img)+'"><figcaption><span>'+esc(who(p))+"</span>"+
       (readonly||off?"":'<button type="button" data-delphoto="'+esc(p.id)+'">消す</button>')+"</figcaption></figure>";
   }).join("")+"</div>";
   else if(loaded)h+='<p class="empty">まだ写真がないよ。ふたりとも写真をのこせます（1日'+MAXPH+"枚まで）。</p>";
@@ -505,8 +506,25 @@ function shrink(img,max,q,square){
   cv.getContext("2d").drawImage(img,sx,sy,sw,sh,0,0,cv.width,cv.height);
   return cv.toDataURL("image/jpeg",q);
 }
-function openViewer(src){$("viewimg").src=src;$("viewer").hidden=false}
-function closeViewer(){$("viewer").hidden=true;$("viewimg").removeAttribute("src")}
+var viewList=[],viewIdx=0,viewTok=0;
+function showViewed(){
+  if(!viewList.length)return;
+  viewIdx=(viewIdx+viewList.length)%viewList.length;
+  $("viewimg").src=viewList[viewIdx];
+  $("vnav").hidden=viewList.length<2;$("vcount").textContent=(viewIdx+1)+" / "+viewList.length;
+}
+function openViewer(list,idx){viewTok++;viewList=list;viewIdx=idx||0;$("viewer").hidden=false;showViewed()}
+function closeViewer(){viewTok++;viewList=[];$("viewer").hidden=true;$("viewimg").removeAttribute("src")}
+function openDayPhotos(k,thumb){
+  openViewer([thumb],0);var tok=viewTok,ref=db.collection("photos").doc(k);
+  Promise.all([ref.get(),ref.collection("items").get()]).then(function(r){
+    if(tok!==viewTok)return;
+    var ok=function(x){return x&&typeof x.img==="string"&&x.img.indexOf("data:image/")===0},l=[];
+    if(r[0].exists&&ok(r[0].data()))l.push(r[0].data());
+    l=l.concat(r[1].docs.map(function(d){return d.data()}).filter(ok).sort(function(a,b){return(a.at||0)-(b.at||0)}));
+    if(l.length){viewList=l.map(function(x){return x.img});viewIdx=0;showViewed()}
+  },function(){});
+}
 function saveViewed(){
   var u=$("viewimg").src;if(!u||u.indexOf("data:image/")!==0)return;
   var pr=u.split(","),mime=(/data:([^;]+)/.exec(pr[0])||[])[1]||"image/jpeg",bin=atob(pr[1]),arr=new Uint8Array(bin.length);
@@ -799,7 +817,7 @@ function showBanner(t){var b=$("banner");b.hidden=false;b.textContent=t}
 
 document.addEventListener("click",function(ev){
   var zi=ev.target.closest("img[data-zoom]");
-  if(zi)return openViewer(zi.src);
+  if(zi)return openViewer(photoList().map(function(x){return x.img}),+zi.dataset.zoom||0);
   if(ev.target.id==="viewer"||ev.target.id==="viewimg")return closeViewer();
   var b=ev.target.closest("button");
   if(!b){
@@ -813,8 +831,11 @@ document.addEventListener("click",function(ev){
   if(b.dataset.page)return setPage(b.dataset.page);
   if(b.id==="gotoday"){go(keyOf(new Date()));return setPage("home")}
   if(b.dataset.calm){var cp=calYM.split("-"),cd=new Date(+cp[0],+cp[1]-1+(+b.dataset.calm),1);calYM=cd.getFullYear()+"-"+pad(cd.getMonth()+1);return renderCal()}
+  if(b.dataset.go&&b.classList.contains("pic")&&db){var pim=b.querySelector("img"),psrc=pim?pim.src:"";go(b.dataset.go);if(psrc)openDayPhotos(b.dataset.go,psrc);return}
   if(b.dataset.go){go(b.dataset.go);if(b.dataset.to)setPage(b.dataset.to);return}
   if(b.id==="closeviewer")return closeViewer();
+  if(b.id==="vprev"){viewIdx--;return showViewed()}
+  if(b.id==="vnext"){viewIdx++;return showViewed()}
   if(b.id==="savephoto")return saveViewed();
   if(b.id==="newhome")return createHome();
   if(b.id==="joinhome")return joinHome($("joincode").value);
