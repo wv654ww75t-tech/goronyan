@@ -141,6 +141,7 @@ button:disabled,input:disabled,select:disabled{opacity:.45;cursor:default}
 .edit input[type=text]{flex:1 1 100%;box-sizing:border-box}
 #pt{flex:1;min-width:8em}
 .edit input[type=number]{width:5em}
+.edit select{min-width:4.2em}
 .tap .n{font-family:var(--display);font-size:1.3rem;font-variant-numeric:tabular-nums;line-height:1.2}
 .list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-top:1px dashed var(--line)}
 .list li{border-bottom:1px dashed var(--line);padding:8px 0;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
@@ -291,9 +292,10 @@ var plans={},plansExists=false,photo={day:null,legacy:null,items:[]},photoOff=nu
 try{localNick=localStorage.getItem("noa-nick")||""}catch(e){}
 
 function safeSet(el,html){
+  if(el.__html===html)return;
   var a=document.activeElement;
   if(a&&el.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return;
-  el.innerHTML=html;
+  el.innerHTML=html;el.__html=html;
 }
 function entriesOf(k){
   var d=days.get(k),out=[];
@@ -400,7 +402,8 @@ function renderCal(){
   box.innerHTML=h+'</div><p class="calnote">黄色の点は記録がある日。写真をのこした日は写真が出て、押すと大きく見られます。日付を押してから、下のボタンでその日のページへ。</p>';
 }
 function editHtml(e){
-  var h='<div class="edit"><label for="t-'+e.id+'">時間</label><input type="time" id="t-'+e.id+'" data-time="'+e.id+'" value="'+hm(e.at)+'">';
+  var dt=new Date(e.at),opts=function(n,v){var o="";for(var i=0;i<n;i++)o+='<option value="'+i+'"'+(i===v?" selected":"")+">"+pad(i)+"</option>";return o};
+  var h='<div class="edit"><label for="th-'+e.id+'">時間</label><select id="th-'+e.id+'" data-th="'+e.id+'" aria-label="時">'+opts(24,dt.getHours())+'</select><span>時</span><select id="tm-'+e.id+'" data-tm="'+e.id+'" aria-label="分">'+opts(60,dt.getMinutes())+"</select><span>分</span>";
   var chips=function(f,list){return list.map(function(p){return '<button type="button" class="chip'+(e[f]===p[0]?" on":"")+'" data-f="'+f+'" data-v="'+p[0]+'" data-id="'+e.id+'" aria-pressed="'+(e[f]===p[0])+'">'+p[1]+"</button>"}).join("")};
   var lab=function(t){return '<span class="lab">'+t+"</span>"};
   var flag=function(f){return '<button type="button" class="chip'+(e[f]?" on":"")+'" data-f="'+f+'" data-v="1" data-id="'+e.id+'" aria-pressed="'+!!e[f]+'">'+FLAGS[f]+"</button>"};
@@ -947,15 +950,12 @@ document.addEventListener("click",function(ev){
   if(b.id==="savenick0"){var n0=$("nick0").value;$("nick0").blur();return saveNick(n0)}
   if(b.id==="savebday"){var v2=$("bday").value;$("bday").blur();if(!v2)return toast("日付をえらんでね。");return db.doc("meta/noa").set(Object.assign({},meta,{birthday:v2})).then(function(){toast("お誕生日を保存しました。")},fail)}
 });
-// time pickers save when they close, so the wheel can be scrolled freely
-document.addEventListener("focusout",function(ev){
-  var t=ev.target;if(!db||readonly||!t.dataset||!t.dataset.time||!t.value)return;
-  var e=entriesOf(cur).filter(function(x){return x.id===t.dataset.time})[0];
-  if(!e||hm(e.at)===t.value){render();return}
-  var p=t.value.split(":");patchEntry(t.dataset.time,{at:atFor(cur,+p[0],+p[1])});toast("時間を "+t.value+" にしました。");
-});
 document.addEventListener("change",function(ev){
   var t=ev.target;if(!db||readonly)return;
+  if(t.dataset&&(t.dataset.th||t.dataset.tm)){
+    var tid=t.dataset.th||t.dataset.tm,box=t.closest(".edit"),hh=+box.querySelector("[data-th]").value,mm=+box.querySelector("[data-tm]").value;
+    t.blur();patchEntry(tid,{at:atFor(cur,hh,mm)});toast("時間を "+pad(hh)+":"+pad(mm)+" にしました。");return;
+  }
   if(t.dataset&&t.dataset.num){var g=parseFloat(t.value);t.blur();patchEntry(t.dataset.num,{g:g>0&&g<=500?Math.round(g):""})}
   if(t.dataset&&t.dataset.note){patchEntry(t.dataset.note,{n:t.value.trim().slice(0,60)})}
   if(t.id==="restorefile"&&t.files&&t.files[0]){
