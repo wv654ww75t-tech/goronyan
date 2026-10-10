@@ -96,6 +96,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .plans .late{color:var(--warn);font-weight:700}
 .photo{display:block;width:100%;border-radius:18px;border:1px solid var(--line)}
 .photo{cursor:zoom-in}
+.tap{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.edit .lab{flex-basis:100%;font-size:.8rem;color:var(--muted);margin-top:4px}
+#sheet{position:fixed;left:0;right:0;bottom:calc(60px + env(safe-area-inset-bottom,0px));z-index:8;display:flex;justify-content:center;pointer-events:none}
+#sheet>div{pointer-events:auto;width:100%;max-width:520px;box-sizing:border-box;max-height:68vh;overflow-y:auto;background:var(--surface);border:2px solid var(--accent);border-bottom:0;border-radius:24px 24px 0 0;padding:14px 16px 18px;box-shadow:0 -6px 18px rgba(74,58,34,.18)}
+#sheet h3{margin:0 0 6px;font-family:var(--display);font-weight:400;font-size:1rem}
+#sheet .edit{padding:0}
 #viewer{position:fixed;inset:0;z-index:20;background:rgba(40,30,15,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top,0px)) 12px calc(16px + env(safe-area-inset-bottom,0px))}
 #vcount{color:#FFFFFF;font-variant-numeric:tabular-nums;min-width:3em;text-align:center}
 #viewer img{max-width:100%;max-height:calc(100% - 150px);object-fit:contain;border-radius:14px}
@@ -205,7 +211,7 @@ label{font-size:.9rem;color:var(--muted)}
   <section class="sec" data-p="home"><h2>のあちゃんプロフィール</h2><div id="profile"></div></section>
 
   <section class="sec" data-p="food"><h2>ごはん</h2><div class="grid3" id="meals"></div><div id="mealedit"></div></section>
-  <section class="sec" data-p="food"><h2>おやつ・トイレ</h2><div class="grid3" id="counts"></div></section>
+  <section class="sec" data-p="food"><h2>おやつ・トイレ</h2><div class="grid3" id="counts"></div><p class="hint">ボタンを長押しすると、いちばん新しい記録をくわしく書いたり、なおしたりできます。</p></section>
   <section class="sec" data-p="food"><h2>お水・体調</h2><div class="grid3" id="body"></div></section>
   <section class="sec" data-p="care"><h2>おていれ</h2><div class="grid2" id="care"></div></section>
   <section class="sec" data-p="clinic"><h2>病院・お薬</h2><div class="grid3" id="clinic"></div><div id="plans"></div></section>
@@ -220,6 +226,7 @@ label{font-size:.9rem;color:var(--muted)}
   <details data-p="home"><summary>設定（名前・ごはんの時間・合言葉・バックアップ）</summary><div class="sec" id="settings"></div></details>
 </div>
 <nav id="tabs" aria-label="ページ"><div></div></nav>
+<div id="sheet" hidden><div id="sheetbox"></div></div>
 <div id="viewer" hidden role="dialog" aria-label="写真を大きく表示"><img id="viewimg" alt="のあちゃんの写真"><div class="row" id="vnav" hidden><button type="button" class="ghost" id="vprev" aria-label="前の写真">‹</button><span id="vcount"></span><button type="button" class="ghost" id="vnext" aria-label="次の写真">›</button></div><div class="row"><button type="button" class="primary" id="savephoto">写真を保存する</button><button type="button" class="ghost" id="closeviewer">とじる</button></div></div>
 <div id="toast" aria-live="polite"></div>
 
@@ -264,7 +271,12 @@ var CLINIC=[["hospital","病院"],["vaccine","ワクチン"],["med","お薬"]];
 var LABEL={meal_am:"朝ごはん",meal_noon:"昼ごはん",meal_pm:"夜ごはん",snack:"おやつ",poop:"うんち",pee:"おしっこ",water:"お水交換",vomit:"吐いた",hairball:"毛玉",brush:"ブラッシング",nail:"つめ切り",teeth:"歯みがき",litter:"トイレ掃除",hospital:"病院",vaccine:"ワクチン",med:"お薬"};
 var FOOD=[["dry","カリカリ"],["wet","ウェット"],["both","両方"]];
 var pick=function(list,v){for(var i=0;i<list.length;i++)if(list[i][0]===v)return list[i][1];return""};
-var POOP=[["normal","ふつう"],["soft","やわらかめ"],["hard","かため"]];
+var POOP=[["dry","コロコロ"],["hard","かため"],["normal","ふつう"],["soft","やわらかめ"],["watery","水っぽい"]];
+var AMT=[["less","少なめ"],["normal","ふつう"],["more","多め"]];
+var PCOL=[["brown","茶色"],["dark","こげ茶"],["black","黒っぽい"],["red","赤っぽい"],["yellow","黄色っぽい"],["white","白っぽい"]];
+var UCOL=[["pale","うすい"],["normal","ふつう"],["deep","濃い"],["red","赤っぽい"]];
+var VOM=[["food","フード"],["hair","毛玉"],["clear","透明・白い液"],["yellow","黄色い液"]];
+var FLAGS={left:"食べ残しあり",bl:"血がまじる",hr:"毛がまじる",smell:"においが強い"};
 
 var db=null,user=null,me={id:null,name:""},readonly=false,loaded=false;
 var days=new Map(),members=new Map(),meta={},membersLoaded=false;
@@ -309,6 +321,9 @@ function render(){
   $("tabs").firstElementChild.innerHTML=PAGES.map(function(p){return '<button type="button" data-page="'+p[0]+'"'+(page===p[0]?' aria-current="page"':"")+">"+ICON[p[2]]+"<span>"+p[1]+"</span></button>"}).join("");
   var tes=PAGEK[page]?es.filter(function(x){return PAGEK[page].indexOf(x.k)>=0}):es;
   renderTiles();
+  var se=openAt==="sheet"?es.filter(function(x){return x.id===openId})[0]:null;
+  $("sheet").hidden=!se||readonly;
+  if(se&&!readonly)safeSet($("sheetbox"),"<h3>"+LABEL[se.k]+"（"+hm(se.at)+"）をくわしく</h3>"+editHtml(se));
 
   $("meals").innerHTML=MEALS.map(function(m){
     var e=es.filter(function(x){return x.k===m[0]}).pop();
@@ -346,14 +361,18 @@ function render(){
   else tl='<ul class="list">'+tes.map(function(e){
     var bits=[];
     if(e.k==="poop"&&e.st)bits.push(pick(POOP,e.st));
+    if(e.am)bits.push("量 "+pick(AMT,e.am));
+    if(e.co)bits.push(pick(e.k==="pee"?UCOL:PCOL,e.co));
+    if(e.vc)bits.push(pick(VOM,e.vc));
+    ["bl","hr","smell"].forEach(function(f){if(e[f])bits.push(FLAGS[f])});
     if(e.ft)bits.push(pick(FOOD,e.ft));
     if(typeof e.g==="number")bits.push(e.g+"g");
     if(e.left)bits.push("食べ残しあり");
     if(e.n)bits.push(esc(e.n));
     var st=bits.length?"（"+bits.join("・")+"）":"";
     var h='<li data-row="'+e.id+'"><time>'+hm(e.at)+'</time><span class="what">'+LABEL[e.k]+st+' <span class="who">'+esc(who(e))+"</span></span>";
-    if(!readonly)h+='<button type="button" class="more" data-open="'+e.id+'" aria-expanded="'+(openId===e.id&&openAt!=="meal")+'">'+(openId===e.id&&openAt!=="meal"?"とじる":"なおす")+"</button>";
-    if(openId===e.id&&openAt!=="meal"&&!readonly)h+=editHtml(e);
+    if(!readonly)h+='<button type="button" class="more" data-open="'+e.id+'" aria-expanded="'+(openId===e.id&&openAt==="")+'">'+(openId===e.id&&openAt===""?"とじる":"なおす")+"</button>";
+    if(openId===e.id&&openAt===""&&!readonly)h+=editHtml(e);
     return h+"</li>";
   }).join("")+"</ul>";
   safeSet($("timeline"),tl);
@@ -383,12 +402,17 @@ function renderCal(){
 function editHtml(e){
   var h='<div class="edit"><label for="t-'+e.id+'">時間</label><input type="time" id="t-'+e.id+'" data-time="'+e.id+'" value="'+hm(e.at)+'">';
   var chips=function(f,list){return list.map(function(p){return '<button type="button" class="chip'+(e[f]===p[0]?" on":"")+'" data-f="'+f+'" data-v="'+p[0]+'" data-id="'+e.id+'" aria-pressed="'+(e[f]===p[0])+'">'+p[1]+"</button>"}).join("")};
-  if(e.k==="poop")h+=chips("st",POOP);
+  var lab=function(t){return '<span class="lab">'+t+"</span>"};
+  var flag=function(f){return '<button type="button" class="chip'+(e[f]?" on":"")+'" data-f="'+f+'" data-v="1" data-id="'+e.id+'" aria-pressed="'+!!e[f]+'">'+FLAGS[f]+"</button>"};
+  if(e.k==="poop")h+=lab("かたさ")+chips("st",POOP)+lab("量")+chips("am",AMT)+lab("色")+chips("co",PCOL)+lab("気になること")+flag("bl")+flag("hr")+flag("smell");
+  if(e.k==="pee")h+=lab("量")+chips("am",AMT)+lab("色")+chips("co",UCOL)+lab("気になること")+flag("bl")+flag("smell");
+  if(e.k==="vomit")h+=lab("吐いたもの")+chips("vc",VOM)+lab("気になること")+flag("bl");
+  if(e.k==="snack")h+=lab("量")+chips("am",AMT);
   if(e.k.indexOf("meal")===0){
     h+=chips("ft",FOOD)+'<label for="g-'+e.id+'">量</label><input type="number" id="g-'+e.id+'" data-num="'+e.id+'" inputmode="numeric" min="1" max="500" value="'+(typeof e.g==="number"?e.g:"")+'"><span>g</span>'+
       '<button type="button" class="chip'+(e.left?" on":"")+'" data-f="left" data-v="1" data-id="'+e.id+'" aria-pressed="'+!!e.left+'">食べ残しあり</button>';
   }
-  h+='<input type="text" id="n-'+e.id+'" data-note="'+e.id+'" maxlength="60" aria-label="メモ" placeholder="メモ（例：病院の名前、お薬の名前）" value="'+esc(e.n||"")+'">';
+  h+='<input type="text" id="n-'+e.id+'" data-note="'+e.id+'" maxlength="60" aria-label="メモ" placeholder="メモ（気づいたことを自由に）" value="'+esc(e.n||"")+'">';
   h+='<button type="button" class="del" data-del="'+e.id+'">この記録を消す</button><button type="button" class="chip" data-close="1">とじる</button></div>';
   return h;
 }
@@ -656,11 +680,11 @@ function renderAsks(off){
 }
 function renderVet(){
   if(page!=="clinic")return;
-  var now=new Date(),c={},rec=0,ws=[],dates={vomit:[],hairball:[]},soft=0,hard=0,left=0,lastVac="";
+  var now=new Date(),c={},rec=0,ws=[],dates={vomit:[],hairball:[]},soft=0,hard=0,watery=0,blood=0,left=0,lastVac="";
   for(var i=29;i>=0;i--){
     var k=keyOf(new Date(now.getFullYear(),now.getMonth(),now.getDate()-i)),es=entriesOf(k),d=days.get(k);
     if(es.length)rec++;
-    es.forEach(function(e){c[e.k]=(c[e.k]||0)+1;if(dates[e.k]&&dates[e.k].indexOf(md(k))<0)dates[e.k].push(md(k));if(e.k==="poop"){if(e.st==="soft")soft++;if(e.st==="hard")hard++}if(e.left)left++;if(e.k==="vaccine")lastVac=md(k)});
+    es.forEach(function(e){c[e.k]=(c[e.k]||0)+1;if(dates[e.k]&&dates[e.k].indexOf(md(k))<0)dates[e.k].push(md(k));if(e.k==="poop"){if(e.st==="soft")soft++;if(e.st==="hard"||e.st==="dry")hard++;if(e.st==="watery")watery++}if(e.bl)blood++;if(e.left)left++;if(e.k==="vaccine")lastVac=md(k)});
     if(d&&d.weight&&typeof d.weight.kg==="number")ws.push([k,d.weight.kg]);
   }
   if(!rec&&!ws.length){$("vet").innerHTML='<p class="empty">'+(loaded?"記録がたまると、ここに30日分のまとめが出ます。":"読み込み中…")+"</p>";return}
@@ -673,7 +697,8 @@ function renderVet(){
     "<dt>体重</dt><dd>"+w+"</dd>"+
     "<dt>ごはん</dt><dd>"+meals+"回（1日 "+avg(meals)+"回）"+(left?"・食べ残し "+left+"回":"")+"</dd>"+
     "<dt>おやつ</dt><dd>"+n("snack")+"回</dd>"+
-    "<dt>うんち</dt><dd>"+n("poop")+"回（1日 "+avg(n("poop"))+"回）"+(soft?"・やわらかめ "+soft+"回":"")+(hard?"・かため "+hard+"回":"")+"</dd>"+
+    "<dt>うんち</dt><dd>"+n("poop")+"回（1日 "+avg(n("poop"))+"回）"+(soft?"・やわらかめ "+soft+"回":"")+(hard?"・かため "+hard+"回":"")+(watery?"・水っぽい "+watery+"回":"")+"</dd>"+
+    (blood?"<dt>血がまじる</dt><dd>"+blood+"回</dd>":"")+
     "<dt>おしっこ</dt><dd>"+n("pee")+"回（1日 "+avg(n("pee"))+"回）</dd>"+
     "<dt>吐いた</dt><dd>"+dl("vomit")+"</dd>"+
     "<dt>毛玉</dt><dd>"+dl("hairball")+"</dd>"+
@@ -815,14 +840,32 @@ function saveNick(v){
 }
 function showBanner(t){var b=$("banner");b.hidden=false;b.textContent=t}
 
+var lp={t:null,fired:false,x:0,y:0};
+function lpClear(){clearTimeout(lp.t);lp.t=null}
+document.addEventListener("pointerdown",function(ev){
+  lpClear();lp.fired=false;
+  var b=ev.target.closest("button[data-rec],button[data-edit]");
+  if(!b||b.disabled||!db||readonly)return;
+  var k=b.dataset.rec,id=b.dataset.edit;lp.x=ev.clientX;lp.y=ev.clientY;
+  lp.t=setTimeout(function(){
+    lp.t=null;lp.fired=true;
+    var e=id?{id:id}:entriesOf(cur).filter(function(x){return x.k===k}).pop();
+    if(!e){toast("まだ記録がないよ。1回押すと記録されます。");return}
+    openId=e.id;openAt="sheet";render();
+  },550);
+});
+document.addEventListener("pointermove",function(ev){if(lp.t&&(Math.abs(ev.clientX-lp.x)>10||Math.abs(ev.clientY-lp.y)>10))lpClear()});
+["pointerup","pointercancel","scroll"].forEach(function(n){document.addEventListener(n,lpClear,true)});
+document.addEventListener("contextmenu",function(ev){if(ev.target.closest(".tap"))ev.preventDefault()});
 document.addEventListener("click",function(ev){
+  if(lp.fired){lp.fired=false;if(ev.target.closest("button[data-rec],button[data-edit]"))return}
   var zi=ev.target.closest("img[data-zoom]");
   if(zi)return openViewer(photoList().map(function(x){return x.img}),+zi.dataset.zoom||0);
   if(ev.target.id==="viewer"||ev.target.id==="viewimg")return closeViewer();
   var b=ev.target.closest("button");
   if(!b){
     var row=ev.target.closest("li[data-row]");
-    if(row&&db&&!readonly&&!ev.target.closest(".edit")){var rid=row.dataset.row,sr=openAt!=="meal"&&openId===rid;openId=sr?null:rid;openAt="";render()}
+    if(row&&db&&!readonly&&!ev.target.closest(".edit")){var rid=row.dataset.row,sr=openAt===""&&openId===rid;openId=sr?null:rid;openAt="";render()}
     return;
   }
   if(b.id==="prev"){var d=fromKey(cur);d.setDate(d.getDate()-1);return go(keyOf(d))}
@@ -843,10 +886,10 @@ document.addEventListener("click",function(ev){
   if(b.dataset.rec){b.disabled=true;return record(b.dataset.rec)}
   if(b.dataset.edit){var same=openAt==="meal"&&openId===b.dataset.edit;openId=same?null:b.dataset.edit;openAt=same?"":"meal";return render()}
   if(b.dataset.close){openId=null;openAt="";return render()}
-  if(b.dataset.open){var sm=openAt!=="meal"&&openId===b.dataset.open;openId=sm?null:b.dataset.open;openAt="";return render()}
+  if(b.dataset.open){var sm=openAt===""&&openId===b.dataset.open;openId=sm?null:b.dataset.open;openAt="";return render()}
   if(b.dataset.f){
     var f=b.dataset.f,on=b.classList.contains("on"),o={};
-    o[f]=f==="left"?!on:(on?"":b.dataset.v);return patchEntry(b.dataset.id,o);
+    o[f]=FLAGS[f]?!on:(on?"":b.dataset.v);return patchEntry(b.dataset.id,o);
   }
   if(b.dataset.plandone){var pid=b.dataset.plandone,po={};po[pid]={x:true};planWrite(po);return toast("予定をおわりにしました","もとに戻す",function(){var u={};u[pid]={x:false};planWrite(u)})}
   if(b.dataset.askdone){var aid=b.dataset.askdone,ao={};ao[aid]={x:true};askWrite(ao);return toast("聞けたことにしました","もとに戻す",function(){var u2={};u2[aid]={x:false};askWrite(u2)})}
