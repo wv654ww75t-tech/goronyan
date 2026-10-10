@@ -24,7 +24,7 @@ img{max-width:100%}
 /* Layout: one phone-width column, like a pet-care notebook page. Today's care on top (tap once to record), history and growth below. */
 :root{
   --bg:#FDF6DD; --surface:#FFFEF7; --ink:#4A3A22; --muted:#8A7650; --dot:#F6E6A6;
-  --accent:#E2A417; --accent-soft:#FFF0BF; --line:#F0DD9A; --done:#FFE27A; --done-ink:#5E4300; --warn:#C2452F;
+  --accent:#E2A417; --accent-soft:#FFF0BF; --line:#F0DD9A; --done:#FFE27A; --done-ink:#5E4300; --warn:#C2452F; --plan:#3F97CE;
   color-scheme:light;
   --display:"Mochiy Pop P One","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
   --body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic",sans-serif;
@@ -57,6 +57,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .calgrid .wd{font-size:.75rem;color:var(--muted)}
 .calgrid button{aspect-ratio:3/4;font-size:1.1rem;border:0;background:none;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-variant-numeric:tabular-nums;min-width:0;padding:0}
 .calgrid button::after{content:"";width:6px;height:6px;border-radius:50%;background:transparent}
+.calgrid button{position:relative}
+.calgrid .pl{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:var(--plan);box-shadow:0 0 0 2px var(--surface)}
+.calgrid button.fut{color:var(--muted)}
+.plans .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--plan)}
+.plans button.link{background:none;border:0;padding:0;text-align:left;flex:1;min-width:0;min-height:40px;overflow-wrap:anywhere}
+#hpt{flex:1;min-width:8em}
 .calgrid button.has::after{background:var(--accent)}
 .calgrid button.sel{background:var(--done);color:var(--done-ink);font-weight:700}
 .calgrid button.today{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -208,7 +214,8 @@ label{font-size:.9rem;color:var(--muted)}
     <button type="button" id="next" aria-label="次の日">次の日 ›</button>
   </nav>
   <div id="cal" class="cal" data-p="home"></div>
-  <section class="sec" data-p="home"><div class="dayhead"><h2 id="homeday">今日</h2><button type="button" class="ghost" id="gotoday" hidden>今日へ</button></div><div class="grid2" id="tiles"></div></section>
+  <section class="sec" data-p="home"><div class="dayhead"><h2 id="homeday">今日</h2><button type="button" class="ghost" id="gotoday" hidden>今日へ</button></div><div id="dayplans"></div><div class="grid2" id="tiles"></div></section>
+  <section class="sec" data-p="home"><h2>これからの予定</h2><div id="upcoming"></div></section>
   <section class="sec" data-p="home"><h2>のあちゃんプロフィール</h2><div id="profile"></div></section>
 
   <section class="sec" data-p="food"><h2>ごはん</h2><div class="grid3" id="meals"></div><div id="mealedit"></div></section>
@@ -383,23 +390,24 @@ function render(){
   safeSet($("memobox"),'<textarea id="memo" placeholder="例：よく食べた、よく遊んだ、甘えんぼだった"'+(off?" disabled":"")+">"+esc(d.memo||"")+"</textarea>");
 
   renderWeight(off);renderWeek();renderSettings();renderNick();
-  renderHome(off);renderAsks(off);renderVet();
+  renderHome(off);renderHomePlans(off);renderAsks(off);renderVet();
 }
 
 function renderCal(){
   var box=$("cal");if(page!=="home")return;
   var p=calYM.split("-"),y=+p[0],m=+p[1],today=keyOf(new Date());
   var first=new Date(y,m-1,1),n=new Date(y,m,0).getDate();
-  var h='<div class="calhead"><button type="button" class="ghost" data-calm="-1" aria-label="前の月">‹</button><strong>'+y+"年"+m+'月</strong><button type="button" class="ghost" data-calm="1" aria-label="次の月"'+(calYM>=today.slice(0,7)?" disabled":"")+">›</button></div>";
+  var h='<div class="calhead"><button type="button" class="ghost" data-calm="-1" aria-label="前の月">‹</button><strong>'+y+"年"+m+'月</strong><button type="button" class="ghost" data-calm="1" aria-label="次の月">›</button></div>';
+  var pdays={};Object.keys(plans).forEach(function(id){var q=plans[id];if(q&&!q.x&&q.d)pdays[q.d]=1});
   h+='<div class="calgrid">'+WD.map(function(w){return '<span class="wd">'+w+"</span>"}).join("");
   for(var i=0;i<first.getDay();i++)h+="<span></span>";
   for(var d=1;d<=n;d++){
     var k=y+"-"+pad(m)+"-"+pad(d),dd=days.get(k);
     var has=entriesOf(k).length||(dd&&(dd.memo||dd.ph||dd.weight));
     var ph=dd&&typeof dd.ph==="string"&&dd.ph.indexOf("data:image/")===0?dd.ph:"";
-    h+='<button type="button" data-go="'+k+'" class="'+(has?"has ":"")+(ph?"pic ":"")+(k===cur?"sel ":"")+(k===today?"today":"")+'"'+(k>today?" disabled":"")+' aria-label="'+m+"月"+d+"日"+(has?" 記録あり":"")+(ph?" 写真あり":"")+'">'+(ph?'<img alt="" src="'+esc(ph)+'"><b>'+d+"</b>":d)+"</button>";
+    h+='<button type="button" data-go="'+k+'" class="'+(has?"has ":"")+(ph?"pic ":"")+(k===cur?"sel ":"")+(k===today?"today ":"")+(k>today?"fut":"")+'" aria-label="'+m+"月"+d+"日"+(has?" 記録あり":"")+(ph?" 写真あり":"")+(pdays[k]?" 予定あり":"")+'">'+(ph?'<img alt="" src="'+esc(ph)+'"><b>'+d+"</b>":d)+(pdays[k]?'<i class="pl" aria-hidden="true"></i>':"")+"</button>";
   }
-  box.innerHTML=h+'</div><p class="calnote">黄色の点は記録がある日。写真をのこした日は写真が出て、押すと大きく見られます。日付を押してから、下のボタンでその日のページへ。</p>';
+  box.innerHTML=h+'</div><p class="calnote">黄色の点は記録がある日、青い点は予定がある日。写真をのこした日は写真が出て、押すと大きく見られます。日付を押してから、下のボタンでその日のページへ。</p>';
 }
 function editHtml(e){
   var dt=new Date(e.at),opts=function(n,v){var o="";for(var i=0;i<n;i++)o+='<option value="'+i+'"'+(i===v?" selected":"")+">"+pad(i)+"</option>";return o};
@@ -644,7 +652,8 @@ function renderHome(off){
   }
   $("annis").innerHTML=chips.map(function(c){return"<span>"+esc(c)+"</span>"}).join("");
   // gentle nudges for today
-  var al=[],soft=false;
+  var al=[],soft=false,nw=new Date(),tmr=keyOf(new Date(nw.getFullYear(),nw.getMonth(),nw.getDate()+1));
+  Object.keys(plans).forEach(function(id){var q=plans[id];if(q&&!q.x&&q.t){if(q.d===today)al.push("今日の予定："+q.t);else if(q.d===tmr)al.push("あしたの予定："+q.t)}});
   if(loaded){
     var now=new Date(),mins=now.getHours()*60+now.getMinutes(),es=entriesOf(today);
     var c=function(list,k){return list.filter(function(e){return e.k===k}).length};
@@ -671,6 +680,19 @@ function renderHome(off){
       (readonly?"":'<div class="row"><button type="button" class="ghost" id="editprof"'+(off?" disabled":"")+">プロフィールを"+(has?"なおす":"書く")+"</button></div>")+"</div>";
   }
   safeSet($("profile"),h);
+}
+function renderHomePlans(off){
+  if(page!=="home")return;
+  var today=keyOf(new Date()),all=Object.keys(plans).map(function(id){return Object.assign({id:id},plans[id])}).filter(function(q){return q&&!q.x&&q.d&&q.t}).sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:0});
+  var mine=all.filter(function(q){return q.d===cur}),h="";
+  if(mine.length)h+='<ul class="plans">'+mine.map(function(q){return '<li><span class="dot"></span><span class="what">'+esc(q.t)+"</span>"+(readonly?"":'<button type="button" class="chip" data-plandone="'+q.id+'">'+(q.d<=today?"おわった":"消す")+"</button>")+"</li>"}).join("")+"</ul>";
+  if(!readonly)h+='<div class="row" style="margin:8px 0 12px"><input type="text" id="hpt" maxlength="30" aria-label="この日の予定" placeholder="この日の予定（例：14時 病院、実家へ）"'+(off?" disabled":"")+'><button type="button" class="ghost" id="addhplan"'+(off?" disabled":"")+">予定を足す</button></div>";
+  safeSet($("dayplans"),h);
+  var up=all.filter(function(q){return q.d>=today}).slice(0,8),u;
+  if(up.length)u='<ul class="plans">'+up.map(function(q){var d=fromKey(q.d),n=daysBetween(today,q.d);
+    return '<li><span class="dot"></span><button type="button" class="link" data-go="'+q.d+'" data-to="home"><b>'+(d.getMonth()+1)+"/"+d.getDate()+"（"+WD[d.getDay()]+"）</b> "+esc(q.t)+' <span style="color:var(--muted)">'+(n===0?"今日":n===1?"あした":"あと"+n+"日")+"</span></button></li>"}).join("")+"</ul>";
+  else u='<p class="empty">'+(loaded?"カレンダーで日付を押して、その日の予定を足せるよ。":"読み込み中…")+"</p>";
+  $("upcoming").innerHTML=u;
 }
 function renderAsks(off){
   if(page!=="clinic")return;
@@ -825,6 +847,7 @@ function wr(day,patch){
 function stamp(){var o={by:me.id||null};if(!me.id&&localNick)o.bn=localNick;return o}
 function atFor(day,h,m){var d=fromKey(day),n=new Date();d.setHours(h==null?n.getHours():h,m==null?n.getMinutes():m,0,0);return d.getTime()}
 function record(k){
+  if(cur>keyOf(new Date())){toast("まだ来ていない日には記録できないよ。予定はカレンダーのページで足せます。");return render()}
   var id="e"+Date.now().toString(36)+Math.random().toString(36).slice(2,6),day=cur,p={};
   var f=feedOf(k),at=atFor(day),ex={};
   if(/^\d\d:\d\d$/.test(f.t||"")){var tp=f.t.split(":");at=atFor(day,+tp[0],+tp[1])}
@@ -914,6 +937,12 @@ document.addEventListener("click",function(ev){
     if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
     profEdit=false;render();
     return db.doc("meta/noa").set(Object.assign({},meta,pv)).then(function(){toast("プロフィールを保存しました。")},fail);
+  }
+  if(b.id==="addhplan"){
+    var ht=$("hpt").value.trim().slice(0,30);if(!ht)return toast("予定の内容を入れてね。");
+    $("hpt").value="";$("hpt").blur();
+    var hp={};hp["p"+Date.now().toString(36)]=Object.assign({d:cur,t:ht,x:false},stamp());
+    return planWrite(hp).then(function(){toast("予定を足しました。")});
   }
   if(b.id==="addplan"){
     var pd=$("pd").value,pt=$("pt").value.trim().slice(0,30);
