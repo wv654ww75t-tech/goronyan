@@ -62,7 +62,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-vi
 .calgrid button.fut{color:var(--muted)}
 .plans .dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--plan)}
 .plans button.link{background:none;border:0;padding:0;text-align:left;flex:1;min-width:0;min-height:40px;overflow-wrap:anywhere}
-#hpt{flex:1;min-width:8em}
+#hpt,#pet{flex:1;min-width:8em}
+.plans li.editing{border:2px solid var(--plan);flex-direction:column;align-items:stretch}
+.plans li.editing .row{gap:8px}
 .calgrid button.has::after{background:var(--accent)}
 .calgrid button.sel{background:var(--done);color:var(--done-ink);font-weight:700}
 .calgrid button.today{box-shadow:inset 0 0 0 2px var(--accent)}
@@ -442,7 +444,7 @@ function renderTiles(){
   var T=[["food","ごはん・トイレ","meal",loaded?food:"読み込み中…",""],["care","おていれ","brush",names(PAGEK.care)||"この日はなし",""],["clinic","病院・お薬","hospital",clinic,""],["photo","写真・メモ","photo",ph,""],["grow","成長のきろく","grow",w," wide"]];
   $("tiles").innerHTML=T.map(function(t){return '<button type="button" class="tile'+t[4]+'" data-page="'+t[0]+'"><span class="t">'+ICON[t[2]]+t[1]+"</span><small>"+esc(t[3])+"</small></button>"}).join("");
 }
-function setPage(p){page=p;openId=null;openAt="";if(p==="home")calYM=cur.slice(0,7);render();window.scrollTo({top:0})}
+function setPage(p){page=p;planEdit=null;openId=null;openAt="";if(p==="home")calYM=cur.slice(0,7);render();window.scrollTo({top:0})}
 function lastDays(){
   var out={},today=keyOf(new Date());
   days.forEach(function(d,k){
@@ -462,10 +464,11 @@ function renderPlans(off){
     .filter(function(p){return p&&!p.x&&p.d}).sort(pcmp);
   var h="";
   if(list.length)h+='<ul class="plans">'+list.map(function(p){
+    if(planEdit===p.id&&page==="clinic"&&!readonly)return planForm(p);
     var d=fromKey(p.d),n=daysBetween(today,p.d);
     var when=n===0?"今日":n>0?"あと"+n+"日":"すぎたよ";
     return '<li><span class="what"><b>'+(d.getMonth()+1)+"/"+d.getDate()+"（"+WD[d.getDay()]+"）</b> "+esc(ptx(p))+' <span class="'+(n<0?"late":"who")+'" style="'+(n<0?"":"color:var(--muted)")+'">'+when+"</span></span>"+
-      (readonly?"":'<button type="button" class="chip" data-plandone="'+p.id+'">おわった</button>')+"</li>";
+      (readonly?"":'<button type="button" class="chip" data-planedit="'+p.id+'">なおす</button><button type="button" class="chip" data-plandone="'+p.id+'">おわった</button>')+"</li>";
   }).join("")+"</ul>";
   else if(loaded)h+='<p class="empty">つぎの病院やワクチンの予定を入れておけるよ。</p>';
   if(!readonly)h+='<div class="row" style="margin-top:8px"><input type="date" id="pd" aria-label="予定の日"'+(off?" disabled":"")+'>'+timeSel("pp",off)+'<input type="text" id="pt" maxlength="30" aria-label="予定の内容" placeholder="例：ワクチン"'+(off?" disabled":"")+'><button type="button" class="ghost" id="addplan"'+(off?" disabled":"")+">予定を足す</button></div>";
@@ -681,13 +684,20 @@ function renderHome(off){
   }
   safeSet($("profile"),h);
 }
+var planEdit=null;
+function planForm(q){
+  return '<li class="editing"><div class="row"><input type="date" id="ped" aria-label="予定の日" value="'+esc(q.d)+'">'+timeSel("pe",false,q.tm)+'</div><div class="row"><input type="text" id="pet" maxlength="30" aria-label="予定の内容" value="'+esc(q.t)+'"></div>'+
+    '<div class="row"><button type="button" class="primary" data-plansave="'+q.id+'">保存する</button><button type="button" class="ghost" id="plancancel">やめる</button><button type="button" class="del" data-plandone="'+q.id+'">この予定を消す</button></div></li>';
+}
 function ptx(q){return(q.tm?q.tm+" ":"")+q.t}
 function pcmp(a,b){var x=a.d+(a.tm||""),y=b.d+(b.tm||"");return x<y?-1:x>y?1:0}
-function timeSel(id,off){
+function timeSel(id,off,tm){
+  var th=tm?+tm.slice(0,2):-1,tmn=tm?+tm.slice(3):0;
   var h='<select id="'+id+'h" aria-label="予定の時間（時）"'+(off?" disabled":"")+'><option value="">時間なし</option>',i;
-  for(i=0;i<24;i++)h+='<option value="'+i+'">'+i+"時</option>";
+  for(i=0;i<24;i++)h+='<option value="'+i+'"'+(i===th?" selected":"")+">"+i+"時</option>";
   h+='</select><select id="'+id+'m" aria-label="予定の時間（分）"'+(off?" disabled":"")+">";
-  for(i=0;i<60;i+=5)h+='<option value="'+i+'">'+pad(i)+"分</option>";
+  if(tmn%5)h+='<option value="'+tmn+'" selected>'+pad(tmn)+"分</option>";
+  for(i=0;i<60;i+=5)h+='<option value="'+i+'"'+(i===tmn&&tm?" selected":"")+">"+pad(i)+"分</option>";
   return h+"</select>";
 }
 function readTime(id){var hv=$(id+"h").value,o={};if(hv!=="")o.tm=pad(+hv)+":"+pad(+$(id+"m").value);$(id+"h").value="";$(id+"m").value="0";$(id+"h").blur();$(id+"m").blur();return o}
@@ -695,7 +705,7 @@ function renderHomePlans(off){
   if(page!=="home")return;
   var today=keyOf(new Date()),all=Object.keys(plans).map(function(id){return Object.assign({id:id},plans[id])}).filter(function(q){return q&&!q.x&&q.d&&q.t}).sort(pcmp);
   var mine=all.filter(function(q){return q.d===cur}),h="";
-  if(mine.length)h+='<ul class="plans">'+mine.map(function(q){return '<li><span class="dot"></span><span class="what">'+esc(ptx(q))+"</span>"+(readonly?"":'<button type="button" class="chip" data-plandone="'+q.id+'">'+(q.d<=today?"おわった":"消す")+"</button>")+"</li>"}).join("")+"</ul>";
+  if(mine.length)h+='<ul class="plans">'+mine.map(function(q){if(planEdit===q.id&&!readonly)return planForm(q);return '<li><span class="dot"></span><span class="what">'+esc(ptx(q))+"</span>"+(readonly?"":'<button type="button" class="chip" data-planedit="'+q.id+'">なおす</button><button type="button" class="chip" data-plandone="'+q.id+'">'+(q.d<=today?"おわった":"消す")+"</button>")+"</li>"}).join("")+"</ul>";
   if(!readonly)h+='<div class="row" style="margin:8px 0 12px">'+timeSel("hp",off)+'<input type="text" id="hpt" maxlength="30" aria-label="この日の予定" placeholder="この日の予定（例：病院、実家へ）"'+(off?" disabled":"")+'><button type="button" class="ghost" id="addhplan"'+(off?" disabled":"")+">予定を足す</button></div>";
   safeSet($("dayplans"),h);
   var up=all.filter(function(q){return q.d>=today}).slice(0,8),u;
@@ -745,7 +755,7 @@ function planWrite(patch){
   var ref=db.doc("meta/plans");
   return (plansExists?ref.update({items:patch}):ref.set({items:patch})).catch(fail);
 }
-function go(k){cur=k;openId=null;openAt="";calOpen=false;watchPhoto();render()}
+function go(k){cur=k;planEdit=null;openId=null;openAt="";calOpen=false;watchPhoto();render()}
 
 function renderWeight(off){
   var pts=[];days.forEach(function(d,k){if(d.weight&&typeof d.weight.kg==="number")pts.push({k:k,kg:d.weight.kg})});
@@ -927,7 +937,7 @@ document.addEventListener("click",function(ev){
     var f=b.dataset.f,on=b.classList.contains("on"),o={};
     o[f]=FLAGS[f]?!on:(on?"":b.dataset.v);return patchEntry(b.dataset.id,o);
   }
-  if(b.dataset.plandone){var pid=b.dataset.plandone,po={};po[pid]={x:true};planWrite(po);return toast("予定をおわりにしました","もとに戻す",function(){var u={};u[pid]={x:false};planWrite(u)})}
+  if(b.dataset.plandone){planEdit=null;var pid=b.dataset.plandone,po={};po[pid]={x:true};planWrite(po);return toast("予定をおわりにしました","もとに戻す",function(){var u={};u[pid]={x:false};planWrite(u)})}
   if(b.dataset.askdone){var aid=b.dataset.askdone,ao={};ao[aid]={x:true};askWrite(ao);return toast("聞けたことにしました","もとに戻す",function(){var u2={};u2[aid]={x:false};askWrite(u2)})}
   if(b.id==="addask"){
     var at_=$("askt").value.trim().slice(0,60);if(!at_)return toast("聞きたいことを入れてね。");
@@ -947,6 +957,16 @@ document.addEventListener("click",function(ev){
     if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
     profEdit=false;render();
     return db.doc("meta/noa").set(Object.assign({},meta,pv)).then(function(){toast("プロフィールを保存しました。")},fail);
+  }
+  if(b.dataset.planedit){planEdit=b.dataset.planedit;return render()}
+  if(b.id==="plancancel"){planEdit=null;if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();return render()}
+  if(b.dataset.plansave){
+    var sid=b.dataset.plansave,sd=$("ped").value,stx=$("pet").value.trim().slice(0,30),shv=$("peh").value;
+    if(!sd||!stx)return toast("日付と内容を入れてね。");
+    var sp={};sp[sid]={d:sd,t:stx,tm:shv===""?"":pad(+shv)+":"+pad(+$("pem").value)};
+    if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();
+    planEdit=null;render();
+    return planWrite(sp).then(function(){toast("予定をなおしました。")});
   }
   if(b.id==="addhplan"){
     var ht=$("hpt").value.trim().slice(0,30);if(!ht)return toast("予定の内容を入れてね。");
