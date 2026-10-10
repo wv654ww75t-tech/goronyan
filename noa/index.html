@@ -436,7 +436,7 @@ function renderTiles(){
   var meals=MEALS.filter(function(m){return c(m[0])}).length;
   var food="ごはん "+meals+"/3・うんち "+c("poop")+"・おしっこ "+c("pee")+(c("vomit")+c("hairball")?"・吐いた/毛玉 "+(c("vomit")+c("hairball")):"");
   var np=Object.keys(plans).map(function(id){return plans[id]}).filter(function(p){return p&&!p.x&&p.d&&p.d>=today}).sort(function(a,b){return a.d<b.d?-1:1})[0];
-  var clinic=names(PAGEK.clinic)||(np?"つぎの予定 "+(fromKey(np.d).getMonth()+1)+"/"+fromKey(np.d).getDate()+" "+np.t:"この日はなし");
+  var clinic=names(PAGEK.clinic)||(np?"つぎの予定 "+(fromKey(np.d).getMonth()+1)+"/"+fromKey(np.d).getDate()+" "+ptx(np):"この日はなし");
   var nph=photoList().length,ph=(nph?"写真 "+nph+"枚":"写真なし")+(d.memo?"・メモあり":"");
   var w=d.weight&&typeof d.weight.kg==="number"?"この日 "+d.weight.kg.toFixed(2)+" kg":"体重・7日間・月のふりかえり";
   var T=[["food","ごはん・トイレ","meal",loaded?food:"読み込み中…",""],["care","おていれ","brush",names(PAGEK.care)||"この日はなし",""],["clinic","病院・お薬","hospital",clinic,""],["photo","写真・メモ","photo",ph,""],["grow","成長のきろく","grow",w," wide"]];
@@ -459,16 +459,16 @@ function agoText(k){
 }
 function renderPlans(off){
   var today=keyOf(new Date()),list=Object.keys(plans).map(function(id){return Object.assign({id:id},plans[id])})
-    .filter(function(p){return p&&!p.x&&p.d}).sort(function(a,b){return a.d<b.d?-1:1});
+    .filter(function(p){return p&&!p.x&&p.d}).sort(pcmp);
   var h="";
   if(list.length)h+='<ul class="plans">'+list.map(function(p){
     var d=fromKey(p.d),n=daysBetween(today,p.d);
     var when=n===0?"今日":n>0?"あと"+n+"日":"すぎたよ";
-    return '<li><span class="what"><b>'+(d.getMonth()+1)+"/"+d.getDate()+"（"+WD[d.getDay()]+"）</b> "+esc(p.t)+' <span class="'+(n<0?"late":"who")+'" style="'+(n<0?"":"color:var(--muted)")+'">'+when+"</span></span>"+
+    return '<li><span class="what"><b>'+(d.getMonth()+1)+"/"+d.getDate()+"（"+WD[d.getDay()]+"）</b> "+esc(ptx(p))+' <span class="'+(n<0?"late":"who")+'" style="'+(n<0?"":"color:var(--muted)")+'">'+when+"</span></span>"+
       (readonly?"":'<button type="button" class="chip" data-plandone="'+p.id+'">おわった</button>')+"</li>";
   }).join("")+"</ul>";
   else if(loaded)h+='<p class="empty">つぎの病院やワクチンの予定を入れておけるよ。</p>';
-  if(!readonly)h+='<div class="row" style="margin-top:8px"><input type="date" id="pd" aria-label="予定の日"'+(off?" disabled":"")+'><input type="text" id="pt" maxlength="30" aria-label="予定の内容" placeholder="例：ワクチン"'+(off?" disabled":"")+'><button type="button" class="ghost" id="addplan"'+(off?" disabled":"")+">予定を足す</button></div>";
+  if(!readonly)h+='<div class="row" style="margin-top:8px"><input type="date" id="pd" aria-label="予定の日"'+(off?" disabled":"")+'>'+timeSel("pp",off)+'<input type="text" id="pt" maxlength="30" aria-label="予定の内容" placeholder="例：ワクチン"'+(off?" disabled":"")+'><button type="button" class="ghost" id="addplan"'+(off?" disabled":"")+">予定を足す</button></div>";
   safeSet($("plans"),h);
 }
 function photoList(){
@@ -653,7 +653,7 @@ function renderHome(off){
   $("annis").innerHTML=chips.map(function(c){return"<span>"+esc(c)+"</span>"}).join("");
   // gentle nudges for today
   var al=[],soft=false,nw=new Date(),tmr=keyOf(new Date(nw.getFullYear(),nw.getMonth(),nw.getDate()+1));
-  Object.keys(plans).forEach(function(id){var q=plans[id];if(q&&!q.x&&q.t){if(q.d===today)al.push("今日の予定："+q.t);else if(q.d===tmr)al.push("あしたの予定："+q.t)}});
+  Object.keys(plans).forEach(function(id){var q=plans[id];if(q&&!q.x&&q.t){if(q.d===today)al.push("今日の予定："+ptx(q));else if(q.d===tmr)al.push("あしたの予定："+ptx(q))}});
   if(loaded){
     var now=new Date(),mins=now.getHours()*60+now.getMinutes(),es=entriesOf(today);
     var c=function(list,k){return list.filter(function(e){return e.k===k}).length};
@@ -681,16 +681,26 @@ function renderHome(off){
   }
   safeSet($("profile"),h);
 }
+function ptx(q){return(q.tm?q.tm+" ":"")+q.t}
+function pcmp(a,b){var x=a.d+(a.tm||""),y=b.d+(b.tm||"");return x<y?-1:x>y?1:0}
+function timeSel(id,off){
+  var h='<select id="'+id+'h" aria-label="予定の時間（時）"'+(off?" disabled":"")+'><option value="">時間なし</option>',i;
+  for(i=0;i<24;i++)h+='<option value="'+i+'">'+i+"時</option>";
+  h+='</select><select id="'+id+'m" aria-label="予定の時間（分）"'+(off?" disabled":"")+">";
+  for(i=0;i<60;i+=5)h+='<option value="'+i+'">'+pad(i)+"分</option>";
+  return h+"</select>";
+}
+function readTime(id){var hv=$(id+"h").value,o={};if(hv!=="")o.tm=pad(+hv)+":"+pad(+$(id+"m").value);$(id+"h").value="";$(id+"m").value="0";$(id+"h").blur();$(id+"m").blur();return o}
 function renderHomePlans(off){
   if(page!=="home")return;
-  var today=keyOf(new Date()),all=Object.keys(plans).map(function(id){return Object.assign({id:id},plans[id])}).filter(function(q){return q&&!q.x&&q.d&&q.t}).sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:0});
+  var today=keyOf(new Date()),all=Object.keys(plans).map(function(id){return Object.assign({id:id},plans[id])}).filter(function(q){return q&&!q.x&&q.d&&q.t}).sort(pcmp);
   var mine=all.filter(function(q){return q.d===cur}),h="";
-  if(mine.length)h+='<ul class="plans">'+mine.map(function(q){return '<li><span class="dot"></span><span class="what">'+esc(q.t)+"</span>"+(readonly?"":'<button type="button" class="chip" data-plandone="'+q.id+'">'+(q.d<=today?"おわった":"消す")+"</button>")+"</li>"}).join("")+"</ul>";
-  if(!readonly)h+='<div class="row" style="margin:8px 0 12px"><input type="text" id="hpt" maxlength="30" aria-label="この日の予定" placeholder="この日の予定（例：14時 病院、実家へ）"'+(off?" disabled":"")+'><button type="button" class="ghost" id="addhplan"'+(off?" disabled":"")+">予定を足す</button></div>";
+  if(mine.length)h+='<ul class="plans">'+mine.map(function(q){return '<li><span class="dot"></span><span class="what">'+esc(ptx(q))+"</span>"+(readonly?"":'<button type="button" class="chip" data-plandone="'+q.id+'">'+(q.d<=today?"おわった":"消す")+"</button>")+"</li>"}).join("")+"</ul>";
+  if(!readonly)h+='<div class="row" style="margin:8px 0 12px">'+timeSel("hp",off)+'<input type="text" id="hpt" maxlength="30" aria-label="この日の予定" placeholder="この日の予定（例：病院、実家へ）"'+(off?" disabled":"")+'><button type="button" class="ghost" id="addhplan"'+(off?" disabled":"")+">予定を足す</button></div>";
   safeSet($("dayplans"),h);
   var up=all.filter(function(q){return q.d>=today}).slice(0,8),u;
   if(up.length)u='<ul class="plans">'+up.map(function(q){var d=fromKey(q.d),n=daysBetween(today,q.d);
-    return '<li><span class="dot"></span><button type="button" class="link" data-go="'+q.d+'" data-to="home"><b>'+(d.getMonth()+1)+"/"+d.getDate()+"（"+WD[d.getDay()]+"）</b> "+esc(q.t)+' <span style="color:var(--muted)">'+(n===0?"今日":n===1?"あした":"あと"+n+"日")+"</span></button></li>"}).join("")+"</ul>";
+    return '<li><span class="dot"></span><button type="button" class="link" data-go="'+q.d+'" data-to="home"><b>'+(d.getMonth()+1)+"/"+d.getDate()+"（"+WD[d.getDay()]+"）</b> "+esc(ptx(q))+' <span style="color:var(--muted)">'+(n===0?"今日":n===1?"あした":"あと"+n+"日")+"</span></button></li>"}).join("")+"</ul>";
   else u='<p class="empty">'+(loaded?"カレンダーで日付を押して、その日の予定を足せるよ。":"読み込み中…")+"</p>";
   $("upcoming").innerHTML=u;
 }
@@ -941,14 +951,14 @@ document.addEventListener("click",function(ev){
   if(b.id==="addhplan"){
     var ht=$("hpt").value.trim().slice(0,30);if(!ht)return toast("予定の内容を入れてね。");
     $("hpt").value="";$("hpt").blur();
-    var hp={};hp["p"+Date.now().toString(36)]=Object.assign({d:cur,t:ht,x:false},stamp());
+    var hp={};hp["p"+Date.now().toString(36)]=Object.assign({d:cur,t:ht,x:false},readTime("hp"),stamp());
     return planWrite(hp).then(function(){toast("予定を足しました。")});
   }
   if(b.id==="addplan"){
     var pd=$("pd").value,pt=$("pt").value.trim().slice(0,30);
     if(!pd||!pt)return toast("日付と内容を入れてね。");
     $("pd").value="";$("pt").value="";$("pt").blur();$("pd").blur();
-    var np={};np["p"+Date.now().toString(36)]=Object.assign({d:pd,t:pt,x:false},stamp());
+    var np={};np["p"+Date.now().toString(36)]=Object.assign({d:pd,t:pt,x:false},readTime("pp"),stamp());
     return planWrite(np).then(function(){toast("予定を足しました。")});
   }
   if(b.dataset.delphoto){
