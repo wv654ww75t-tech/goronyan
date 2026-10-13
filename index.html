@@ -271,6 +271,9 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
 }
 :root[data-mode="work"][data-theme="dark"]{--deep:#9fc0e8;--sky:#26364a;--ring:#5f7fa6;--tape:rgba(159,192,232,.3);--c0:#9fc0e8;--on-deep:#0f1b26}
 #modeBtn[aria-pressed="true"]{background:var(--deep);color:var(--on-deep);border-color:var(--deep)}
+.privonly{display:block}
+:root[data-mode="work"] .privonly{display:none}
+.privonly h3 small{font-weight:400;color:var(--muted);font-size:.75rem}
 .workonly{display:none}
 :root[data-mode="work"] .workonly{display:block}
 .sf-early{background:#ffe9a8}.sf-day{background:#cfe8f7}.sf-late{background:#e0d4f5}.sf-night{background:#b9c6e6}.sf-off{background:#ffd5df}.sf-paid{background:#cfeedd}
@@ -635,6 +638,11 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
           <div class="shpre-a"><button class="pill" id="shSave" type="button">⭐ いまの時間を登録</button><button class="pill" id="shDel" type="button" aria-pressed="false">🗑 けす</button></div>
         </div>
 
+        <div class="privonly" id="offBox">
+          <h3>おやすみ <small>しごとモードとおそろいだよ</small></h3>
+          <div class="shifts" id="offChips" role="group" aria-label="おやすみ"></div>
+        </div>
+
         <h3>予定</h3>
         <ul id="events"></ul>
         <form class="add" id="eventForm">
@@ -910,6 +918,8 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     return false;
   }
   function repsFor(k,kind){ return data._rep.filter(function(r){return r.kind===kind&&matches(r,k);}); }
+  function offOf(k){ var w=ROOT._work&&ROOT._work[k]; return (w&&(w.shiftType==='off'||w.shiftType==='paid'))?w.shiftType:''; }
+  function workPage(k){ var sv=data; data=ROOT._work; var p=page(k); data=sv; return p; }
   function hasContent(k){
     var p=peek(k);
     return !!(p.events.length||p.todos.length||p.memo.trim()||p.stamps.length||p.mood||p.photo||p.drawing||p.shiftType||
@@ -927,7 +937,9 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
       var b=el('button','cell'+(dow===0?' sun':'')+(dow===6?' sat':'')+(hn?' hol':'')+(k===todayKey?' today':'')+(k===sel?' sel':'')+(has?' has':''));
       b.type='button';
       b.appendChild(el('span','num',String(d)));
+      var offT=(data===ROOT)?offOf(k):'';
       if(p.shiftType&&SHIFT_BY[p.shiftType]) b.appendChild(el('span','shf sf-'+p.shiftType,SHIFT_BY[p.shiftType][2]));
+      else if(offT) b.appendChild(el('span','shf sf-'+offT,SHIFT_BY[offT][2]));
       if(p.stamps.length){
         var sts=el('span','sts n'+p.stamps.length);
         p.stamps.forEach(function(s){ sts.appendChild(icon(s)); });
@@ -1033,6 +1045,8 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     // シフト
     Array.prototype.forEach.call($('shiftChips').children,function(b){ b.setAttribute('aria-pressed',String(p.shiftType===b.dataset.v)); });
     $('shS').value=p.shiftS||''; $('shE').value=p.shiftE||''; $('shB').value=p.shiftB||'';
+    var curOff=(data===ROOT)?offOf(sel):'';
+    Array.prototype.forEach.call($('offChips').children,function(b){ b.setAttribute('aria-pressed',String(curOff===b.dataset.v)); });
 
     // 日記ページ左上のシール
     var cn=$('corner'); cn.textContent=''; cn.className='corner'+(p.stamps.length?' n'+p.stamps.length:'');
@@ -1045,6 +1059,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     // カレンダー下のまとめ
     var parts=[];
     if(p.shiftType&&SHIFT_BY[p.shiftType]) parts.push(SHIFT_BY[p.shiftType][1]);
+    else if(curOff) parts.push(SHIFT_BY[curOff][1]);
     if(evs.length) parts.push('予定'+evs.length+'件');
     if(items.length) parts.push('ToDo '+done+'/'+items.length);
     $('sum').textContent=dateLabel+(hol?'　'+hol:'')+(parts.length?'　'+parts.join('　'):'　まだ何もないにゃ');
@@ -1427,7 +1442,17 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     body.appendChild(row);
   }
   function presets(){ if(!data._presets||typeof data._presets!=='object') data._presets={}; return data._presets; }
-  function initPresets(){
+  function initOff(){
+    [['off','休み'],['paid','有休']].forEach(function(x){
+      var b=el('button','sf-'+x[0],x[1]); b.type='button'; b.dataset.v=x[0]; b.setAttribute('aria-pressed','false'); $('offChips').appendChild(b);
+    });
+    $('offChips').addEventListener('click',function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      var wp=workPage(sel); wp.shiftType=(wp.shiftType===b.dataset.v)?'':b.dataset.v; wp.shiftS=''; wp.shiftE=''; wp.shiftB='';
+      save(); renderAll();
+    });
+  }
+  function initPresets(){ initOff();
     $('shB').addEventListener('change',function(){ page(sel).shiftB=this.value; save(); renderAll(); });
     $('shSave').addEventListener('click',function(){
       var p=page(sel); if(!p.shiftS||!p.shiftE){ toast('開始と終了の時間を入れてからおしてにゃ'); return; }
@@ -1542,9 +1567,10 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
         c.fillStyle=(col===0||hol)?P['--sun']:(col===6?P['--sat']:P['--ink']); c.font='400 30px '+P.font; c.fillText(String(d),x+10,yy+36);
         var ty=yy+60;
         if(hol){ c.fillStyle=P['--sun']; c.font='400 15px '+P.body; c.fillText(fit(c,hol,cw-16),x+10,yy+54); }
-        if(p.shiftType&&SHIFT_BY[p.shiftType]){
-          c.font='700 18px '+P.body; var t=SHIFT_BY[p.shiftType][1], tw=c.measureText(t).width+16;
-          c.fillStyle=SHCOL[p.shiftType]; rr(c,x+8,yy+60,tw,24,12); c.fill(); c.fillStyle='#43322a'; c.fillText(t,x+16,yy+78); ty=yy+90;
+        var sT=p.shiftType||((data===ROOT)?offOf(k):'');
+        if(sT&&SHIFT_BY[sT]){
+          c.font='700 18px '+P.body; var t=SHIFT_BY[sT][1], tw=c.measureText(t).width+16;
+          c.fillStyle=SHCOL[sT]; rr(c,x+8,yy+60,tw,24,12); c.fill(); c.fillStyle='#43322a'; c.fillText(t,x+16,yy+78); ty=yy+90;
         } else if(hol) ty=yy+66;
         c.font='400 17px '+P.body;
         info.evs.slice(0,3).forEach(function(e,n){
@@ -1680,6 +1706,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
   function noticeLines(){
     var n=ntCfg(), info=dayInfo(todayKey), lines=[], sh=info.p.shiftType&&SHIFT_BY[info.p.shiftType];
     if(ROOT._mode==='work'&&sh) lines.push('今日のシフトは'+sh[1]+(info.p.shiftS?'（'+info.p.shiftS+(info.p.shiftE?'〜'+info.p.shiftE:'')+'）':'')+'にゃ');
+    if(ROOT._mode!=='work'&&offOf(todayKey)) lines.push('今日は'+SHIFT_BY[offOf(todayKey)][1]+'の日にゃ');
     if(n.ev&&info.evs.length){ lines.push('予定が'+info.evs.length+'つあるよ'); info.evs.slice(0,3).forEach(function(e){ lines.push('　'+(e.time?e.time+' ':'')+e.text); }); }
     if(n.td){ var left=info.tds.filter(function(t){return !t.done;}).length; if(left) lines.push('ToDoがあと'+left+'つ残ってるよ'); }
     if(n.hb&&ROOT._mode!=='work'){ var hb=data._habits.filter(function(h){return !info.p.habits[h.id];}).map(function(h){return h.name;}); if(hb.length) lines.push('今日の習慣: '+hb.slice(0,3).join('、')+(hb.length>3?' ほか':'')); }
