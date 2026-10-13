@@ -271,12 +271,15 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
 }
 :root[data-mode="work"][data-theme="dark"]{--deep:#9fc0e8;--sky:#26364a;--ring:#5f7fa6;--tape:rgba(159,192,232,.3);--c0:#9fc0e8;--on-deep:#0f1b26}
 #modeBtn[aria-pressed="true"]{background:var(--deep);color:var(--on-deep);border-color:var(--deep)}
+.offbar{margin:8px 0;padding:10px 12px;border:1px dashed var(--ring);border-radius:14px;background:var(--sky)}
+.offbar p{margin:6px 0;font-size:.8rem;color:var(--muted)}
+#offModeBtn[aria-pressed="true"]{background:var(--deep);color:var(--on-deep)}
 .privonly{display:block}
 :root[data-mode="work"] .privonly{display:none}
 .privonly h3 small{font-weight:400;color:var(--muted);font-size:.75rem}
 .workonly{display:none}
 :root[data-mode="work"] .workonly{display:block}
-.sf-early{background:#ffe9a8}.sf-day{background:#cfe8f7}.sf-late{background:#e0d4f5}.sf-night{background:#b9c6e6}.sf-off{background:#ffd5df}.sf-paid{background:#cfeedd}
+.sf-early{background:#ffe9a8}.sf-day{background:#cfe8f7}.sf-late{background:#e0d4f5}.sf-night{background:#b9c6e6}.sf-off{background:#ffd5df}.sf-paid{background:#cfeedd}.sf-half{background:#ffe3c2}
 .imgv{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
 .imgv[hidden]{display:none}
 .imgbox{background:var(--paper);border-radius:16px;padding:12px;max-height:100%;overflow:auto;max-width:520px;text-align:center}
@@ -609,7 +612,12 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
           <h1 id="title"></h1>
           <button class="icon-btn" id="next" aria-label="次の月">›</button>
         </div>
-        <div class="tools"><button class="pill" id="todayBtn" type="button">今日</button><button class="icon-btn" id="gearBtn" type="button" aria-label="着せ替え">⚙</button><button class="pill" id="modeBtn" type="button" aria-pressed="false">🐱 プライベート</button><button class="pill" id="searchBtn" type="button">🔍 さがす</button><button class="pill" id="imgCalBtn" type="button">🖼 画像にする</button></div>
+        <div class="tools"><button class="pill" id="todayBtn" type="button">今日</button><button class="icon-btn" id="gearBtn" type="button" aria-label="着せ替え">⚙</button><button class="pill" id="modeBtn" type="button" aria-pressed="false">🐱 プライベート</button><button class="pill" id="searchBtn" type="button">🔍 さがす</button><button class="pill" id="imgCalBtn" type="button">🖼 画像にする</button><button class="pill" id="offModeBtn" type="button" aria-pressed="false">🛌 休みをいれる</button></div>
+        <div class="offbar" id="offBar" hidden>
+          <div class="shifts" id="offPick" role="group" aria-label="休みの種類"></div>
+          <p>えらんだ休みを、日付をタップで入れるよ。もう一度タップで消せるよ</p>
+          <button class="pill" id="offDone" type="button">おわり</button>
+        </div>
         <div id="searchBox" hidden>
           <div class="srow"><input type="search" id="q" placeholder="予定・ToDo・日記からさがす" aria-label="検索" autocomplete="off"><button class="pill" id="qClose" type="button">とじる</button></div>
           <ul id="results"></ul>
@@ -918,7 +926,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     return false;
   }
   function repsFor(k,kind){ return data._rep.filter(function(r){return r.kind===kind&&matches(r,k);}); }
-  function offOf(k){ var w=ROOT._work&&ROOT._work[k]; return (w&&(w.shiftType==='off'||w.shiftType==='paid'))?w.shiftType:''; }
+  function offOf(k){ var w=ROOT._work&&ROOT._work[k]; return (w&&(w.shiftType==='off'||w.shiftType==='paid'||w.shiftType==='half'))?w.shiftType:''; }
   function workPage(k){ var sv=data; data=ROOT._work; var p=page(k); data=sv; return p; }
   function hasContent(k){
     var p=peek(k);
@@ -1313,7 +1321,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
   }
 
   // ===== しごとモード
-  var SHIFTS=[['early','早番','早'],['day','日勤','日'],['late','遅番','遅'],['night','夜勤','夜'],['off','休み','休'],['paid','有休','有']];
+  var SHIFTS=[['early','早番','早'],['day','日勤','日'],['late','遅番','遅'],['night','夜勤','夜'],['off','休み','休'],['paid','有休','有'],['half','半休','半']];
   var SHIFT_BY={}; SHIFTS.forEach(function(x){ SHIFT_BY[x[0]]=x; });
   var listN=14;
   function applyMode(){
@@ -1422,7 +1430,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     for(var d=1;d<=days;d++){
       var p=peek(keyOf(y,m,d)); if(!p.shiftType) continue;
       st.counts[p.shiftType]=(st.counts[p.shiftType]||0)+1;
-      if(p.shiftType!=='off'&&p.shiftType!=='paid') st.work++;
+      if(p.shiftType==='half') st.work+=0.5; else if(p.shiftType!=='off'&&p.shiftType!=='paid') st.work++;
       var mi=shiftMins(p); if(mi){ st.mins+=mi; st.timed++; }
     }
     return st;
@@ -1442,8 +1450,16 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     body.appendChild(row);
   }
   function presets(){ if(!data._presets||typeof data._presets!=='object') data._presets={}; return data._presets; }
+  var offMode=false, offType='off';
+  function applyOff(k){
+    var wp=workPage(k), cur=wp.shiftType;
+    if(data===ROOT&&cur&&cur!=='off'&&cur!=='paid'&&cur!=='half'){ toast('この日はシフトが入ってるにゃ（日をひらいて変えてね）'); return; }
+    if(cur===offType){ wp.shiftType=''; wp.shiftS=''; wp.shiftE=''; wp.shiftB=''; }
+    else { wp.shiftType=offType; if(offType!=='half'){ wp.shiftS=''; wp.shiftE=''; wp.shiftB=''; } }
+    save(); renderAll();
+  }
   function initOff(){
-    [['off','休み'],['paid','有休']].forEach(function(x){
+    [['off','休み'],['paid','有休'],['half','半休']].forEach(function(x){
       var b=el('button','sf-'+x[0],x[1]); b.type='button'; b.dataset.v=x[0]; b.setAttribute('aria-pressed','false'); $('offChips').appendChild(b);
     });
     $('offChips').addEventListener('click',function(e){
@@ -1451,6 +1467,17 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
       var wp=workPage(sel); wp.shiftType=(wp.shiftType===b.dataset.v)?'':b.dataset.v; wp.shiftS=''; wp.shiftE=''; wp.shiftB='';
       save(); renderAll();
     });
+    // カレンダーでまとめて休みをいれる
+    [['off','休み'],['paid','有休'],['half','半休']].forEach(function(x){
+      var b=el('button','sf-'+x[0],x[1]); b.type='button'; b.dataset.v=x[0]; b.setAttribute('aria-pressed',String(x[0]===offType)); $('offPick').appendChild(b);
+    });
+    $('offPick').addEventListener('click',function(e){
+      var b=e.target.closest('button'); if(!b) return; offType=b.dataset.v;
+      Array.prototype.forEach.call($('offPick').children,function(c){ c.setAttribute('aria-pressed',String(c===b)); });
+    });
+    function setOffMode(v){ offMode=v; $('offBar').hidden=!v; $('offModeBtn').setAttribute('aria-pressed',String(v)); }
+    $('offModeBtn').addEventListener('click',function(){ setOffMode(!offMode); });
+    $('offDone').addEventListener('click',function(){ setOffMode(false); });
   }
   function initPresets(){ initOff();
     $('shB').addEventListener('change',function(){ page(sel).shiftB=this.value; save(); renderAll(); });
@@ -1492,7 +1519,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
   }
 
   // ===== 画像に書き出し
-  var imgCache={}, SHCOL={early:'#ffd9a8',day:'#bfe3f7',late:'#d9c7f0',night:'#9fb2e0',off:'#f3c4cf',paid:'#c9e8cf'};
+  var imgCache={}, SHCOL={early:'#ffd9a8',day:'#bfe3f7',late:'#d9c7f0',night:'#9fb2e0',off:'#f3c4cf',paid:'#c9e8cf',half:'#ffe3c2'};
   function cssv(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
   function symImg(id){
     if(imgCache[id]) return imgCache[id];
@@ -1978,6 +2005,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
   // カレンダー操作
   $('grid').addEventListener('click',function(e){
     var b=e.target.closest('.cell'); if(!b||!b.dataset.key) return;
+    if(offMode){ applyOff(b.dataset.key); return; }
     if(b.dataset.key===sel){ go(2); return; }
     sel=b.dataset.key; closePad(); renderAll();
   });
