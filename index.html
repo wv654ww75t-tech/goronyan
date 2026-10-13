@@ -631,7 +631,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
         </div>
         <div class="offbar" id="offBar" hidden>
           <div class="shifts" id="offPick" role="group" aria-label="休みの種類"></div>
-          <p>日付をタップで入るよ。もう一度タップで消えるよ</p>
+          <p>えらぶと、選んでる日に入るよ。つづけて日付をタップで入って、もう一度タップで消えるにゃ</p>
           <button class="pill" id="offDone" type="button">おわり</button>
         </div>
         <div id="searchBox" hidden>
@@ -1473,6 +1473,8 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     if(cur===offType){ wp.shiftType=''; wp.shiftS=''; wp.shiftE=''; wp.shiftB=''; }
     else { wp.shiftType=offType; if(offType!=='half'){ wp.shiftS=''; wp.shiftE=''; wp.shiftB=''; } }
     save(); renderAll();
+    var d=parseKey(k), nm=SHIFT_BY[offType][1];
+    toast((d.getMonth()+1)+'/'+d.getDate()+(wp.shiftType===offType?'を'+nm+'にしたにゃ':'の'+nm+'をはずしたにゃ'));
   }
   function initOff(){
     [['off','休み'],['paid','有休'],['half','半休']].forEach(function(x){
@@ -1490,6 +1492,7 @@ mark{background:var(--tape);color:inherit;border-radius:3px;padding:0 2px}
     $('offPick').addEventListener('click',function(e){
       var b=e.target.closest('button'); if(!b) return; offType=b.dataset.v;
       Array.prototype.forEach.call($('offPick').children,function(c){ c.setAttribute('aria-pressed',String(c===b)); });
+      applyOff(sel);
     });
     function setOffMode(v){ offMode=v; $('offBar').hidden=!v; $('offModeBtn').setAttribute('aria-pressed',String(v)); }
     $('offModeBtn').addEventListener('click',function(){ setOffMode(!offMode); });
