@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="memo">
+<meta name="theme-color" content="#F4F1FB">
+<title>memo</title>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>window.MEMO_STANDALONE=true</script>
+</head><body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap">
+<style>
+/* layout: 上に種類タブ、その下に書く欄、メモは読みやすい大きめのカードを1列（広い画面は2列） */
+:root{
+  --bg:#FAF8F5; --card:#FFFFFF; --ink:#2A2522; --soft:#6E655F; --line:#E6E0DA; --danger:#B8475B;
+  --accent:#A07655; --wash:#F3EAE2; --on-accent:#FFFFFF;
+  --f-body:"Zen Maru Gothic","Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#1A1817; --card:#252220; --ink:#F4EFEA; --soft:#B5ABA3; --line:#3A3532; --danger:#F08DA0; color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1A1817; --card:#252220; --ink:#F4EFEA; --soft:#B5ABA3; --line:#3A3532; --danger:#F08DA0; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-weight:500;font-size:17px;line-height:1.75}
+.wrap{max-width:780px;margin:0 auto;padding-block:18px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h1{margin:0;font-size:30px;font-weight:700;letter-spacing:.04em;color:var(--accent)}
+.iconbtn{border:1.5px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px;padding:6px 14px;border-radius:999px;cursor:pointer}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:none;border:2px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:16px;padding:6px 16px;border-radius:999px;cursor:pointer;
+  display:flex;align-items:center;gap:6px}
+.tab .n{font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
+.tab[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:700}
+.tab[aria-pressed="true"] .n{color:var(--on-accent);opacity:.85}
+.tab.add{border-style:dashed;color:var(--soft)}
+.compose{background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.compose:focus-within{border-color:var(--accent)}
+textarea{width:100%;border:none;resize:vertical;min-height:84px;font:inherit;color:var(--ink);background:transparent;outline:none}
+textarea::placeholder,input::placeholder{color:var(--soft)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.spacer{flex:1}
+.label{font-size:14px;color:var(--soft)}
+select{font:inherit;font-size:15px;color:var(--ink);background:var(--wash);border:none;border-radius:999px;padding:6px 14px;cursor:pointer}
+.btn{border:none;font:inherit;font-weight:700;font-size:16px;background:var(--accent);color:var(--on-accent);padding:9px 24px;border-radius:999px;cursor:pointer}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.ghost{background:transparent;color:var(--soft);font-weight:500;padding:9px 12px}
+.btn.warn{background:var(--danger);color:#fff}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.tools{display:flex;gap:8px;align-items:center}
+.search{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--card);border:2px solid var(--line);border-radius:999px;padding:6px 16px}
+.search input{border:none;background:transparent;font:inherit;color:var(--ink);outline:none;width:100%;min-width:0}
+.starf{flex:none}
+.starf[aria-pressed="true"]{background:var(--wash);border-color:var(--accent);color:var(--accent);font-weight:700}
+.list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-items:start}
+.card{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:14px 16px 10px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card .body{white-space:pre-wrap;word-break:break-word;margin:0;cursor:pointer;font-size:17px}
+.meta{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
+.cat{font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;background:var(--wash);color:var(--accent)}
+.stage{border:1.5px solid var(--line);background:transparent;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;padding:1px 10px;border-radius:999px}
+.star{border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;color:var(--soft);padding:2px 4px}
+.star[aria-pressed="true"]{color:var(--accent)}
+.card .body{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.list.compact{grid-template-columns:1fr;gap:6px}
+.list.compact .card{flex-direction:row;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-radius:12px}
+.list.compact .card .body{-webkit-line-clamp:1;flex:1;min-width:0;font-size:16px}
+.list.compact .meta .date,.list.compact .meta .spacer{display:none}
+.archbar{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--wash);color:var(--accent);font-weight:700;border-radius:12px;padding:4px 6px 4px 14px}
+.archlink{align-self:center;border:none;background:transparent;font:inherit;font-size:14px;color:var(--soft);text-decoration:underline;cursor:pointer;padding:6px}
+.empty{text-align:center;color:var(--soft);padding:40px 16px;grid-column:1/-1}
+.note{font-size:13px;color:var(--soft);text-align:center}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.panel{background:var(--card);width:100%;max-width:560px;border-radius:22px 22px 0 0;display:flex;flex-direction:column;gap:14px;max-height:88vh;overflow-y:auto;
+  padding:20px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px))}
+.panel h2{margin:0;font-size:19px}
+.panel textarea{min-height:170px;border:2px solid var(--line);border-radius:12px;padding:10px 12px}
+.panel input[type=text]{font:inherit;color:var(--ink);background:var(--bg);border:2px solid var(--line);border-radius:12px;padding:8px 12px;flex:1;min-width:0}
+.swatches{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.sw{border:2px solid var(--line);background:var(--card);border-radius:14px;padding:10px;font:inherit;font-size:14px;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:8px}
+.sw i{width:22px;height:22px;border-radius:50%;flex:none}
+.sw[aria-pressed="true"]{border-color:var(--ink);font-weight:700}
+.catrow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line)}
+.catrow span{flex:1}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:8px 18px;border-radius:999px;font-size:14px;z-index:30}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>memo</h1>
+    <button class="iconbtn" id="openSettings">🎨 色・種類</button>
+  </header>
+
+  <nav class="tabs" id="tabs" aria-label="種類"></nav>
+
+  <section class="compose" aria-label="あたらしいメモ">
+    <textarea id="draft" placeholder="思いついたこと、なんでも書いてね"></textarea>
+    <div class="row">
+      <label class="label" for="draftCat">種類</label>
+      <select id="draftCat"></select>
+      <span class="spacer"></span>
+      <button class="btn" id="save" disabled>のこす</button>
+    </div>
+  </section>
+
+  <div class="tools">
+    <label class="search"><span aria-hidden="true">🔍</span><input id="q" type="search" placeholder="さがす"></label>
+    <button class="iconbtn starf" id="starOnly" aria-pressed="false" aria-label="お気に入りだけ">★</button>
+    <button class="iconbtn starf" id="compact" aria-pressed="false" aria-label="ぎゅっと表示">☰</button>
+  </div>
+  <div class="archbar" id="archBar" hidden><span>📦 しまったメモを見ています</span><button class="btn ghost" id="archBack">もどる</button></div>
+  <div class="list" id="list"><div class="empty">ひらいています…</div></div>
+  <button class="archlink" id="archOpen" hidden></button>
+  <p class="note" id="note"></p>
+</div>
+
+<!-- 編集 -->
+<div class="sheet" id="editSheet" hidden>
+  <div class="panel" role="dialog" aria-label="メモを編集">
+    <textarea id="editText"></textarea>
+    <div class="row"><label class="label" for="editCat">種類</label><select id="editCat"></select></div>
+    <div class="row">
+      <button class="btn ghost" id="del">けす</button>
+      <button class="btn ghost" id="arch">📦 しまう</button>
+      <span class="spacer"></span>
+      <button class="btn ghost" id="cancel">とじる</button>
+      <button class="btn" id="update">ほぞん</button>
+    </div>
+  </div>
+</div>
+
+<!-- 色・種類 -->
+<div class="sheet" id="setSheet" hidden>
+  <div class="panel" role="dialog" aria-label="色と種類">
+    <h2>画面の明るさ</h2>
+    <div class="swatches" id="modeSwatches"></div>
+    <h2>文字・ボタンの色</h2>
+    <div class="swatches" id="swatches"></div>
+    <h2>背景の色</h2>
+    <div class="swatches" id="bgSwatches"></div>
+    <h2>種類</h2>
+    <div id="catList"></div>
+    <div class="row">
+      <input type="text" id="newCat" placeholder="あたらしい種類（例：やること）" maxlength="12">
+      <button class="btn" id="addCat">ついか</button>
+    </div>
+    <h2>バックアップ</h2>
+    <p class="label" style="margin:0">「書き出す」で出てくる文字をコピーして、メモアプリなどに貼っておいてね。別のスマホに引っこすときは、その文字を貼って「読み込む」を押すよ。</p>
+    <textarea id="backupText" placeholder="ここに書き出した文字が出るよ／貼りつけて読み込むよ" style="min-height:90px;font-size:13px"></textarea>
+    <div class="row">
+      <button class="btn ghost" id="bkExport">書き出す</button>
+      <button class="btn ghost" id="bkCopy">コピー</button>
+      <span class="spacer"></span>
+      <button class="btn" id="bkImport">読み込む</button>
+    </div>
+    <div class="row"><span class="spacer"></span><button class="btn ghost" id="closeSet">とじる</button></div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const COLORS={
+  milktea:{name:"ミルクティー",light:["#A07655","#F3EAE2"],dark:["#D9B08F","#3A2F28"]},
+  sakura:{name:"さくら",light:["#C45E7E","#FBE8EE"],dark:["#F0A3BA","#3E2730"]},
+  mint:{name:"ミント",light:["#3E8F7A","#E2F3EE"],dark:["#86D3BE","#203A33"]},
+  lavender:{name:"ラベンダー",light:["#7A68B5","#EEEAF8"],dark:["#B9ABEB","#2E2A42"]},
+  sky:{name:"水色",light:["#2E86B5","#E4F4FB"],dark:["#8FD3F2","#1F3E50"]},
+  bordeaux:{name:"ボルドー",light:["#8E2F3C","#F6E4E6"],dark:["#E58C98","#3E2226"]},
+};
+const BGS={
+  white:{name:"しろ",light:"#FFFFFF",dark:"#161616"},
+  ivory:{name:"アイボリー",light:"#FAF8F5",dark:"#1A1817"},
+  pink:{name:"うすピンク",light:"#FCF1F4",dark:"#21181B"},
+  mint:{name:"うすみどり",light:"#EFF8F4",dark:"#151E1B"},
+  purple:{name:"うすむらさき",light:"#F4F1FB",dark:"#1A1822"},
+  sky:{name:"うすみず",light:"#EEF7FC",dark:"#141C22"},
+  beige:{name:"ベージュ",light:"#F1E8DE",dark:"#211C17"},
+  gray:{name:"グレー",light:"#EEEEEF",dark:"#1C1C1E"},
+};
+const DEFAULT_CATS=[{id:"memo",name:"メモ"},{id:"idea",name:"アイデア"}];
+const STAGES=["🌱 たね","🌿 そだて中","🌸 かたちに"];
+let showArch=false;
+let items=[], settings={color:"lavender",bg:"purple",mode:"light",cats:DEFAULT_CATS}, tab="all", starOnly=false, editing=null, delArmed=false, store=null;
+
+function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,1600)}
+function fmt(ts){const d=new Date(ts);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function cats(){return settings.cats&&settings.cats.length?settings.cats:DEFAULT_CATS}
+function catOf(it){return it.cat||it.kind||"memo"}
+function catName(id){return (cats().find(c=>c.id===id)||{name:"メモ"}).name}
+
+/* ---- 色 ---- */
+const NEUTRAL={
+  light:{"--card":"#FFFFFF","--ink":"#2A2522","--soft":"#6E655F","--line":"#E6E0DA","--danger":"#B8475B"},
+  dark:{"--card":"#252220","--ink":"#F4EFEA","--soft":"#B5ABA3","--line":"#3A3532","--danger":"#F08DA0"},
+};
+function systemDark(){const t=document.documentElement.dataset.theme;return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches}
+function isDark(){const m=settings.mode||"auto";return m==="auto"?systemDark():m==="dark"}
+function applyColor(){
+  const n=NEUTRAL[isDark()?"dark":"light"], st=document.documentElement.style;
+  for(const k in n)st.setProperty(k,n[k]); st.setProperty("color-scheme",isDark()?"dark":"light");
+  const c=COLORS[settings.color]||COLORS.milktea, [a,w]=isDark()?c.dark:c.light, s=document.documentElement.style;
+  s.setProperty("--accent",a); s.setProperty("--wash",w); s.setProperty("--on-accent",isDark()?"#1A1817":"#FFFFFF");
+  const b=BGS[settings.bg]||BGS.ivory; s.setProperty("--bg",isDark()?b.dark:b.light);
+}
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change",applyColor);
+new MutationObserver(applyColor).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* ---- 保存先：アカウント（db）／使えないときはこの端末 ---- */
+const local={
+  load(){try{return JSON.parse(localStorage.getItem("memo-app")||"null")}catch(e){return null}},
+  save(){try{localStorage.setItem("memo-app",JSON.stringify({items,settings}))}catch(e){}}
+};
+async function put(it){if(store)await store.doc(it.id).set(it);else local.save()}
+async function removeItem(id){if(store)await store.doc(id).delete();else local.save()}
+async function putSettings(){if(store)await store.doc("_settings").set(settings);else local.save()}
+
+async function boot(){
+  try{
+    const db=await claude.use("db"), user=await claude.use("user"), uid=user?await user.id():null;
+    if(db&&uid){
+      store=db.collection("data/users/"+uid);
+      store.onSnapshot(s=>{
+        items=[];
+        s.docs.forEach(d=>{const v=d.data(); if(d.id==="_settings") settings={...settings,...v}; else if(v&&v.text) items.push(v)});
+        applyColor(); renderAll();
+      },()=>{$("note").textContent="うまく読みこめませんでした。ページを開きなおしてね"});
+      return;
+    }
+  }catch(e){}
+  const saved=local.load(); if(saved){items=saved.items||[];settings={...settings,...saved.settings}}
+  $("note").textContent=window.MEMO_STANDALONE?"メモはこのスマホの中に保存されるよ。ときどき「🎨 色・種類」からバックアップしてね":"いまはこの端末の中だけに保存されています";
+  applyColor(); renderAll();
+}
+
+/* ---- 表示 ---- */
+function renderAll(){renderTabs();renderSelects();renderList();renderSettings()}
+function renderTabs(){
+  const count=id=>items.filter(i=>!i.archived&&(id==="all"||catOf(i)===id)).length;
+  const list=[{id:"all",name:"すべて"},...cats()];
+  if(tab!=="all"&&!cats().some(c=>c.id===tab))tab="all";
+  $("tabs").innerHTML=list.map(c=>`<button class="tab" data-tab="${c.id}" aria-pressed="${tab===c.id}">${esc(c.name)}<span class="n">${count(c.id)}</span></button>`).join("")
+    +`<button class="tab add" id="tabAdd">＋ 種類</button>`;
+}
+function renderSelects(){
+  const opts=cats().map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+  const keep=$("draftCat").value; $("draftCat").innerHTML=opts;
+  $("draftCat").value=tab!=="all"?tab:(cats().some(c=>c.id===keep)?keep:cats()[0].id);
+  $("editCat").innerHTML=opts;
+}
+function renderList(){
+  const q=$("q").value.trim().toLowerCase();
+  const nArch=items.filter(i=>i.archived).length;
+  $("archOpen").hidden=showArch||!nArch; $("archOpen").textContent=`📦 しまったメモ（${nArch}件）を見る`;
+  $("archBar").hidden=!showArch;
+  $("list").classList.toggle("compact",!!settings.compact);
+  $("compact").setAttribute("aria-pressed",!!settings.compact);
+  const v=items.filter(it=>!!it.archived===showArch&&(tab==="all"||catOf(it)===tab)&&(!starOnly||it.star)&&(!q||it.text.toLowerCase().includes(q)))
+    .sort((a,b)=>(b.star-a.star)||(b.updated-a.updated));
+  if(!v.length){
+    $("list").innerHTML=`<div class="empty">${items.length?"ここにはまだないよ":"まだなにもないよ。<br>うえの欄に書いて「のこす」を押してね"}</div>`;return;
+  }
+  $("list").innerHTML=v.map(it=>`
+    <article class="card" data-id="${it.id}">
+      <p class="body" data-act="edit">${esc(it.text)}</p>
+      <div class="meta">
+        ${tab==="all"?`<span class="cat">${esc(catName(catOf(it)))}</span>`:""}
+        ${catOf(it)==="idea"?`<button class="stage" data-act="stage">${STAGES[it.stage||0]}</button>`:""}
+        <span class="spacer"></span><span class="date">${fmt(it.updated)}</span>
+        <button class="star" data-act="star" aria-pressed="${!!it.star}" aria-label="お気に入り">${it.star?"★":"☆"}</button>
+      </div>
+    </article>`).join("");
+}
+function renderSettings(){
+  $("swatches").innerHTML=Object.entries(COLORS).map(([k,c])=>
+    `<button class="sw" data-color="${k}" aria-pressed="${settings.color===k}"><i style="background:${isDark()?c.dark[0]:c.light[0]}"></i>${c.name}</button>`).join("");
+  $("modeSwatches").innerHTML=[["light","☀️ あかるい"],["dark","🌙 くらい"],["auto","📱 スマホに合わせる"]].map(([k,l])=>
+    `<button class="sw" data-mode="${k}" aria-pressed="${(settings.mode||"auto")===k}">${l}</button>`).join("");
+  $("bgSwatches").innerHTML=Object.entries(BGS).map(([k,b])=>
+    `<button class="sw" data-bg="${k}" aria-pressed="${(settings.bg||"ivory")===k}"><i style="background:${isDark()?b.dark:b.light};border:1.5px solid var(--line)"></i>${b.name}</button>`).join("");
+  $("catList").innerHTML=cats().map(c=>{
+    const n=items.filter(i=>catOf(i)===c.id).length, fixed=c.id==="memo";
+    return `<div class="catrow"><span>${esc(c.name)}　<small class="label">${n}件</small></span>${fixed?`<small class="label">きほん</small>`:`<button class="btn ghost" data-delcat="${c.id}">けす</button>`}</div>`}).join("");
+}
+
+/* ---- 操作 ---- */
+$("tabs").addEventListener("click",e=>{
+  if(e.target.closest("#tabAdd")){openSettings();$("newCat").focus();return}
+  const b=e.target.closest("[data-tab]"); if(!b)return; tab=b.dataset.tab; renderTabs(); renderSelects(); renderList();
+});
+$("draft").addEventListener("input",()=>$("save").disabled=!$("draft").value.trim());
+$("draft").addEventListener("keydown",e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))$("save").click()});
+$("save").onclick=async()=>{
+  const text=$("draft").value.trim(); if(!text)return; const now=Date.now();
+  const it={id:"m"+now.toString(36)+Math.random().toString(36).slice(2,6),text,cat:$("draftCat").value,stage:0,star:false,created:now,updated:now};
+  items.push(it); $("draft").value=""; $("save").disabled=true; renderTabs(); renderList();
+  try{await put(it);toast(`「${catName(it.cat)}」にのこしたよ`)}catch(e){toast("保存できませんでした。もう一度ためしてね")}
+};
+$("q").addEventListener("input",renderList);
+$("compact").onclick=async()=>{settings={...settings,compact:!settings.compact};renderList();try{await putSettings()}catch(e){}};
+$("archOpen").onclick=()=>{showArch=true;renderList();window.scrollTo({top:0})};
+$("archBack").onclick=()=>{showArch=false;renderList()};
+$("arch").onclick=async()=>{
+  if(!editing)return; const next={...editing,archived:!editing.archived};
+  items=items.map(x=>x.id===next.id?next:x); closeEdit(); renderTabs(); renderList();
+  try{await put(next);toast(next.archived?"しまったよ（いちばん下から見られるよ）":"もどしたよ")}catch(e){toast("保存できませんでした")}
+};
+$("starOnly").onclick=()=>{starOnly=!starOnly;$("starOnly").setAttribute("aria-pressed",starOnly);renderList()};
+$("list").addEventListener("click",async e=>{
+  const act=e.target.closest("[data-act]"); if(!act)return;
+  const it=items.find(x=>x.id===act.closest(".card").dataset.id); if(!it)return;
+  if(act.dataset.act==="edit")return openEdit(it);
+  const next={...it};
+  if(act.dataset.act==="star")next.star=!it.star;
+  if(act.dataset.act==="stage")next.stage=((it.stage||0)+1)%STAGES.length;
+  items=items.map(x=>x.id===it.id?next:x); renderList();
+  try{await put(next)}catch(e){toast("保存できませんでした")}
+});
+
+/* 編集 */
+function openEdit(it){editing=it;$("editText").value=it.text;$("editCat").value=catOf(it);delArmed=false;$("del").textContent="けす";$("del").className="btn ghost";$("arch").textContent=it.archived?"↩︎ もどす":"📦 しまう";$("editSheet").hidden=false}
+function closeEdit(){$("editSheet").hidden=true;editing=null}
+$("cancel").onclick=closeEdit;
+$("editSheet").addEventListener("click",e=>{if(e.target.id==="editSheet")closeEdit()});
+$("update").onclick=async()=>{
+  const text=$("editText").value.trim(); if(!editing||!text)return;
+  const next={...editing,text,cat:$("editCat").value,updated:Date.now()}; delete next.kind;
+  items=items.map(x=>x.id===next.id?next:x); closeEdit(); renderTabs(); renderList();
+  try{await put(next);toast("ほぞんしたよ")}catch(e){toast("保存できませんでした")}
+};
+$("del").onclick=async()=>{
+  if(!delArmed){delArmed=true;$("del").textContent="ほんとうにけす";$("del").className="btn warn";return}
+  const id=editing.id; items=items.filter(x=>x.id!==id); closeEdit(); renderTabs(); renderList();
+  try{await removeItem(id);toast("けしたよ")}catch(e){toast("けせませんでした")}
+};
+
+/* 色・種類 */
+function openSettings(){renderSettings();$("setSheet").hidden=false}
+$("openSettings").onclick=openSettings;
+$("closeSet").onclick=()=>$("setSheet").hidden=true;
+$("setSheet").addEventListener("click",async e=>{
+  if(e.target.id==="setSheet"){$("setSheet").hidden=true;return}
+  const sw=e.target.closest("[data-color]");
+  if(sw){settings={...settings,color:sw.dataset.color};applyColor();renderSettings();try{await putSettings()}catch(err){toast("保存できませんでした")}return}
+  const md=e.target.closest("[data-mode]");
+  if(md){settings={...settings,mode:md.dataset.mode};applyColor();renderSettings();try{await putSettings()}catch(err){toast("保存できませんでした")}return}
+  const bg=e.target.closest("[data-bg]");
+  if(bg){settings={...settings,bg:bg.dataset.bg};applyColor();renderSettings();try{await putSettings()}catch(err){toast("保存できませんでした")}return}
+  const dc=e.target.closest("[data-delcat]");
+  if(dc){
+    const id=dc.dataset.delcat;
+    if(dc.dataset.armed!=="1"){dc.dataset.armed="1";dc.textContent="メモに移してけす";dc.className="btn warn";return}
+    const moved=items.filter(i=>catOf(i)===id).map(i=>{const n={...i,cat:"memo"};delete n.kind;return n});
+    items=items.map(i=>moved.find(m=>m.id===i.id)||i);
+    settings={...settings,cats:cats().filter(c=>c.id!==id)}; renderAll();
+    try{for(const m of moved)await put(m);await putSettings();toast("種類をけしたよ")}catch(err){toast("保存できませんでした")}
+  }
+});
+$("addCat").onclick=async()=>{
+  const name=$("newCat").value.trim(); if(!name)return;
+  if(cats().some(c=>c.name===name)){toast("その種類はもうあるよ");return}
+  const c={id:"c"+Date.now().toString(36),name};
+  settings={...settings,cats:[...cats(),c]}; $("newCat").value=""; renderAll();
+  try{await putSettings();toast(`「${name}」をついかしたよ`)}catch(e){toast("保存できませんでした")}
+};
+/* バックアップ */
+let importArmed=false;
+$("bkExport").onclick=()=>{$("backupText").value=JSON.stringify({app:"memo",v:1,items,settings});toast("書き出したよ。コピーしてね")};
+$("bkCopy").onclick=()=>{
+  const t=$("backupText");
+  if(!t.value)$("bkExport").click();
+  const done=()=>toast("コピーしたよ");
+  try{navigator.clipboard.writeText(t.value).then(done,()=>{t.select();document.execCommand("copy");done()})}catch(e){t.select();try{document.execCommand("copy")}catch(_){}done()}
+};
+$("bkImport").onclick=async()=>{
+  let data; try{data=JSON.parse($("backupText").value)}catch(e){toast("読み込めない文字だったよ。全部コピーできてるか見てね");return}
+  if(!data||!Array.isArray(data.items)){toast("メモのバックアップじゃないみたい");return}
+  if(!importArmed){importArmed=true;$("bkImport").textContent="ほんとうに読み込む";$("bkImport").className="btn warn";return}
+  importArmed=false;$("bkImport").textContent="読み込む";$("bkImport").className="btn";
+  const map=new Map(items.map(i=>[i.id,i])); data.items.forEach(i=>{if(i&&i.id&&i.text)map.set(i.id,i)});
+  items=[...map.values()]; if(data.settings)settings={...settings,...data.settings};
+  applyColor(); renderAll();
+  try{ if(store){for(const i of data.items)if(i&&i.id&&i.text)await store.doc(i.id).set(i);await putSettings()} else local.save();
+    toast(`${data.items.length}件 読み込んだよ`)}catch(e){toast("保存できませんでした")}
+};
+$("newCat").addEventListener("keydown",e=>{if(e.key==="Enter")$("addCat").click()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeEdit();$("setSheet").hidden=true}});
+
+applyColor(); renderAll(); boot();
+</script>
+
+</body></html>
