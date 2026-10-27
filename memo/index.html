@@ -66,6 +66,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .meta{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums}
 .cat{font-size:13px;font-weight:700;padding:2px 10px;border-radius:999px;background:var(--wash);color:var(--accent)}
 .stage{border:1.5px solid var(--line);background:transparent;font:inherit;font-size:13px;color:var(--ink);cursor:pointer;padding:1px 10px;border-radius:999px}
+.copy{border:1.5px solid var(--line);background:var(--card);font:inherit;font-size:13px;color:var(--accent);font-weight:700;cursor:pointer;padding:2px 10px;border-radius:999px}
+.copy:active{background:var(--wash)}
 .star{border:none;background:transparent;cursor:pointer;font-size:22px;line-height:1;color:var(--soft);padding:2px 4px}
 .star[aria-pressed="true"]{color:var(--accent)}
 .card .body{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
@@ -126,7 +128,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div class="sheet" id="editSheet" hidden>
   <div class="panel" role="dialog" aria-label="メモを編集">
     <textarea id="editText"></textarea>
-    <div class="row"><label class="label" for="editCat">種類</label><select id="editCat"></select></div>
+    <div class="row"><label class="label" for="editCat">種類</label><select id="editCat"></select>
+      <span class="spacer"></span><button class="copy" id="editCopy">コピー</button></div>
+    <p class="label" style="margin:0;font-size:13px">一部だけコピーしたいときは、文字をなぞって選んでから「コピー」を押してね</p>
     <div class="row">
       <button class="btn ghost" id="del">けす</button>
       <button class="btn ghost" id="arch">📦 しまう</button>
@@ -191,6 +195,12 @@ const STAGES=["🌱 たね","🌿 そだて中","🌸 かたちに"];
 let showArch=false;
 let items=[], settings={color:"lavender",bg:"purple",mode:"light",cats:DEFAULT_CATS}, tab="all", starOnly=false, editing=null, delArmed=false, store=null;
 
+function copyText(text,msg){
+  const fallback=()=>{const t=document.createElement("textarea");t.value=text;t.setAttribute("readonly","");t.style.cssText="position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(t);t.select();t.setSelectionRange(0,text.length);let ok=false;try{ok=document.execCommand("copy")}catch(e){}t.remove();
+    toast(ok?msg:"コピーできなかったよ。文字を長押ししてコピーしてね")};
+  try{navigator.clipboard.writeText(text).then(()=>toast(msg),fallback)}catch(e){fallback()}
+}
 function toast(t){const el=$("toast");el.textContent=t;el.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>el.hidden=true,1600)}
 function fmt(ts){const d=new Date(ts);return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`}
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
@@ -276,6 +286,7 @@ function renderList(){
         ${tab==="all"?`<span class="cat">${esc(catName(catOf(it)))}</span>`:""}
         ${catOf(it)==="idea"?`<button class="stage" data-act="stage">${STAGES[it.stage||0]}</button>`:""}
         <span class="spacer"></span><span class="date">${fmt(it.updated)}</span>
+        <button class="copy" data-act="copy" aria-label="コピー">コピー</button>
         <button class="star" data-act="star" aria-pressed="${!!it.star}" aria-label="お気に入り">${it.star?"★":"☆"}</button>
       </div>
     </article>`).join("");
@@ -319,6 +330,7 @@ $("list").addEventListener("click",async e=>{
   const act=e.target.closest("[data-act]"); if(!act)return;
   const it=items.find(x=>x.id===act.closest(".card").dataset.id); if(!it)return;
   if(act.dataset.act==="edit")return openEdit(it);
+  if(act.dataset.act==="copy")return copyText(it.text,"メモをコピーしたよ");
   const next={...it};
   if(act.dataset.act==="star")next.star=!it.star;
   if(act.dataset.act==="stage")next.stage=((it.stage||0)+1)%STAGES.length;
@@ -327,9 +339,17 @@ $("list").addEventListener("click",async e=>{
 });
 
 /* 編集 */
-function openEdit(it){editing=it;$("editText").value=it.text;$("editCat").value=catOf(it);delArmed=false;$("del").textContent="けす";$("del").className="btn ghost";$("arch").textContent=it.archived?"↩︎ もどす":"📦 しまう";$("editSheet").hidden=false}
+function openEdit(it){editing=it;lastSel=[0,0];$("editText").value=it.text;$("editCat").value=catOf(it);delArmed=false;$("del").textContent="けす";$("del").className="btn ghost";$("arch").textContent=it.archived?"↩︎ もどす":"📦 しまう";$("editSheet").hidden=false}
 function closeEdit(){$("editSheet").hidden=true;editing=null}
 $("cancel").onclick=closeEdit;
+let lastSel=[0,0];
+["select","keyup","mouseup","touchend"].forEach(ev=>$("editText").addEventListener(ev,()=>{const t=$("editText");lastSel=[t.selectionStart,t.selectionEnd]}));
+document.addEventListener("selectionchange",()=>{const t=$("editText");if(document.activeElement===t)lastSel=[t.selectionStart,t.selectionEnd]});
+$("editCopy").addEventListener("pointerdown",e=>e.preventDefault());
+$("editCopy").onclick=()=>{
+  const t=$("editText"), [a,b]=lastSel, part=b>a?t.value.slice(a,b):"";
+  copyText(part||t.value,part?"選んだところをコピーしたよ":"メモをコピーしたよ");
+};
 $("editSheet").addEventListener("click",e=>{if(e.target.id==="editSheet")closeEdit()});
 $("update").onclick=async()=>{
   const text=$("editText").value.trim(); if(!editing||!text)return;
