@@ -84,7 +84,7 @@ body{background-color:var(--bg);color:var(--ink);font-family:var(--f-body);font-
 .pt .tile.lace{background-image:radial-gradient(circle at 50% 0,transparent 6px,var(--pat) 6.5px 8px,transparent 8.5px),radial-gradient(var(--pat) 1.4px,transparent 1.8px);background-size:16px 16px,16px 16px;background-position:0 0,8px 9px}
 .kz-sec{display:grid;gap:8px;margin-bottom:16px}
 .kz-sec h3{margin:0;font-size:13px;color:var(--ink-soft);font-weight:500;letter-spacing:.04em}
-.wrap{max-width:980px;margin:0 auto;padding-block:20px 150px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:980px;margin:0 auto;padding-block:20px 170px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--sky-ink);outline-offset:2px}
@@ -316,6 +316,19 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
 .simbox li img{width:100%;height:100%;object-fit:cover}
 html,body{overflow-x:hidden;overscroll-behavior-x:none}
 .page{touch-action:pan-y}
+.toolrow{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:12px}
+.toolrow button{border:1px solid var(--line);background:var(--paper);border-radius:14px;padding:8px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:2px;font-family:var(--f-display);font-size:11.5px;color:var(--ink-soft);min-width:0;white-space:nowrap}
+.toolrow button i{font-style:normal;font-size:20px;line-height:1.1;color:#b08a43}
+.toolrow button[aria-pressed="true"]{border-color:var(--brown);background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--brown)}
+.toolpanel{position:relative;z-index:1;margin-top:8px;background:var(--bg);border:1px dashed var(--line);border-radius:12px;padding:10px}
+.toolpanel .search,.toolpanel .sort{width:100%}
+.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:25;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--paper);border-top:1px solid var(--line);padding:8px max(10px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));box-shadow:0 -4px 16px rgba(59,42,34,.08)}
+.bottomnav button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:7px 2px;font-family:var(--f-display);font-size:13px;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;white-space:nowrap}
+.bottomnav button i{font-style:normal;color:#b08a43;font-size:14px}
+.bottomnav button[aria-pressed="true"]{background:var(--brown);border-color:var(--brown);color:var(--paper)}
+.bottomnav button[aria-pressed="true"] i{color:#f0dc9e}
+.fab{bottom:calc(78px + env(safe-area-inset-bottom,0px))!important}
+.toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
 </style>
 
 <div class="wrap">
@@ -323,12 +336,6 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
     <div class="brand"><span class="rays" aria-hidden="true"></span><span class="spark s1" aria-hidden="true">✦</span><span class="spark s2" aria-hidden="true">✦</span><span class="spark s3" aria-hidden="true">✦</span><span class="spark s4" aria-hidden="true">✦</span><span class="crest" aria-hidden="true">♥</span><small>Ouchi Encyclopedia</small><h1>おうち図鑑</h1><div class="flour" aria-hidden="true"><i></i>✿<i></i></div></div>
     <div class="hd-right">
       <button class="kisekae" id="kisekae"><span>✿</span> きせかえ</button>
-      <div class="tabs" role="group" aria-label="表示切り替え">
-        <button id="tab-zukan" aria-pressed="true">図鑑</button>
-        <button id="tab-sort" aria-pressed="false">仕分け</button>
-        <button id="tab-album" aria-pressed="false">アルバム</button>
-        <button id="tab-wish" aria-pressed="false">ほしい</button>
-      </div>
     </div>
   </header>
 
@@ -336,19 +343,23 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
     <div class="pmode" id="pmode" role="group" aria-label="ページの分け方"><button data-m="cat" aria-pressed="true">しゅるい別</button><button data-m="place" aria-pressed="false">場所別</button></div>
     <nav class="index" id="cats" aria-label="ページ"></nav>
     <div class="page">
-    <div class="page-head"><h2 id="pageTitle">ぜんぶのページ</h2><div class="head-r"><div class="sizes" id="sizes" role="group" aria-label="表示の大きさ"><button data-cols="1">大</button><button data-cols="2">中</button><button data-cols="3">小</button></div><span class="pg" id="pageNo"></span></div></div>
-    <details class="narrow" id="narrow"><summary>しぼりこむ・ならべかえ</summary><div class="in">
-    <div class="tools">
-      <input class="search" id="q" type="search" placeholder="名前・推し・置き場所でさがす" aria-label="さがす">
-      <select class="sort" id="sortby" aria-label="並び順">
+    <div class="page-head"><h2 id="pageTitle">ぜんぶのページ</h2><span class="pg" id="pageNo"></span></div>
+    <div class="toolrow" id="toolrow">
+      <button data-tool="search"><i aria-hidden="true" style="font-size:22px">⌕</i>さがす</button>
+      <button data-tool="sort"><i aria-hidden="true">⇅</i>ならべかえ</button>
+      <button data-tool="shown"><i aria-hidden="true">✿</i>置き方</button>
+      <button data-tool="size"><i id="sizeLbl" style="font-family:var(--f-display);font-size:17px">中</i>大きさ</button>
+    </div>
+    <div class="toolpanel" id="toolpanel" hidden>
+      <div data-panel="search"><input class="search" id="q" type="search" placeholder="名前・推し・置き場所でさがす" aria-label="さがす"></div>
+      <div data-panel="sort"><select class="sort" id="sortby" aria-label="並び順">
         <option value="no">図鑑No.順</option>
         <option value="new">新しく登録した順</option>
         <option value="love">好き度が高い順</option>
         <option value="place">置き場所ごと</option>
-      </select>
+      </select></div>
+      <div data-panel="shown"><div class="chips" id="shownf" role="group" aria-label="置き方"></div></div>
     </div>
-    <div class="chips" id="shownf" role="group" aria-label="置き方"></div>
-    </div></details>
     <div id="dispBox"></div>
     <div class="grid" id="grid"></div>
     <div id="emptyBox"></div>
@@ -378,6 +389,12 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 </div>
 
 <button class="fab" id="add" aria-label="登録する" title="登録する">＋</button>
+<nav class="bottomnav" aria-label="表示切り替え">
+  <button id="tab-zukan" aria-pressed="true"><i aria-hidden="true">❦</i>図鑑</button>
+  <button id="tab-sort" aria-pressed="false"><i aria-hidden="true">⚖</i>仕分け</button>
+  <button id="tab-album" aria-pressed="false"><i aria-hidden="true">❀</i>アルバム</button>
+  <button id="tab-wish" aria-pressed="false"><i aria-hidden="true">♡</i>ほしい</button>
+</nav>
 <div id="sheetRoot"></div>
 <div id="toastRoot"></div>
 
@@ -526,7 +543,8 @@ function render(){
   nx.textContent=pi<pn-1?`${pLabel(PG[pi+1])} ›`:"";
   renderDisp(key);renderArrivals();
   const cols=String(look.cols||2);$("#grid").className="grid c"+cols;
-  document.querySelectorAll("#sizes button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.cols===cols));
+  $("#sizeLbl").textContent={1:"大",2:"中",3:"小"}[cols];
+  const tp=state.tool||"";document.querySelectorAll("#toolrow [data-tool]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tool===tp||(b.dataset.tool==="search"&&!!state.filter.q)||(b.dataset.tool==="shown"&&state.filter.shown!=="all")));
   const tot=its.length||1;
   $("#bar").innerHTML=its.length?[["keep","--keep"],["maybe","--maybe"],["let","--let"]].map(([k,v])=>`<i style="width:${cnt(k)/tot*100}%;background:var(${v})"></i>`).join(""):"";
   $("#shownf").innerHTML=[["all","置き方：ぜんぶ"],["display","飾ってる"],["stored","しまってる"],["use","ふだん使い"]].map(([k,l])=>`<button class="chip" data-s="${k}" aria-pressed="${state.filter.shown===k}">${l}</button>`).join("");
@@ -722,9 +740,13 @@ function openSheet(it,opt={}){
 document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#sheetRoot").innerHTML=""});
 $("#add").onclick=()=>openSheet(null);
 $("#kisekae").onclick=openKisekae;
-$("#sizes").onclick=e=>{const b=e.target.closest("[data-cols]");if(b){setLook({cols:+b.dataset.cols});render()}};
+$("#toolrow").onclick=e=>{const b=e.target.closest("[data-tool]");if(!b)return;const t=b.dataset.tool;
+  if(t==="size"){const c=look.cols||2;setLook({cols:c===1?2:c===2?3:1});render();return}
+  state.tool=state.tool===t?"":t;const tp=$("#toolpanel");tp.hidden=!state.tool;
+  tp.querySelectorAll("[data-panel]").forEach(d=>d.hidden=d.dataset.panel!==state.tool);render();
+  if(state.tool==="search")setTimeout(()=>$("#q").focus(),30)};
 $("#grid").onclick=e=>{const p=e.target.closest(".plate");if(p)openSheet(state.items.find(i=>i.id===p.dataset.id))};
-$("#tally").onclick=e=>{const b=e.target.closest("[data-j]");if(b){state.filter.judge=b.dataset.j;render();if(b.dataset.j!=="all")$("#narrow").open=false;$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}};
+$("#tally").onclick=e=>{const b=e.target.closest("[data-j]");if(b){state.filter.judge=b.dataset.j;render();$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}};
 function goPage(c){setKey(c);render();$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}
 $("#cats").onclick=e=>{const b=e.target.closest("[data-c]");if(b){setKey(b.dataset.c);render()}};
 $("#pmode").onclick=e=>{const b=e.target.closest("[data-m]");if(b&&b.dataset.m!==state.pmode){state.pmode=b.dataset.m;render()}};
