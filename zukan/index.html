@@ -314,6 +314,8 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
 .simbox li{flex:none;width:64px;text-align:center;font-size:11px;line-height:1.3}
 .simbox li span{display:grid;place-items:center;width:64px;height:64px;border-radius:8px;overflow:hidden;background:var(--paper);border:2px solid #c9a55a;font-family:var(--f-display);margin-bottom:3px}
 .simbox li img{width:100%;height:100%;object-fit:cover}
+html,body{overflow-x:hidden;overscroll-behavior-x:none}
+.page{touch-action:pan-y}
 </style>
 
 <div class="wrap">
@@ -351,7 +353,6 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
     <div class="grid" id="grid"></div>
     <div id="emptyBox"></div>
     <div class="pager"><button id="prevPg"></button><button id="nextPg"></button></div>
-    <p class="swipe-hint">‹ ページを左右にスライドでめくれます ›</p>
     </div>
     <section class="arrivals" aria-labelledby="arrT"><h2 id="arrT">お迎えのきろく</h2><div class="arr-card" id="arr"></div></section>
     <section class="summary" aria-labelledby="sumT"><h2 id="sumT">仕分けのようす</h2><div class="bar" id="bar"></div><div class="tally" id="tally"></div></section>
@@ -731,15 +732,7 @@ $("#dispBox").onclick=e=>{const b=e.target.closest("[data-rot]");if(b)openRotate
 $("#albumGrid").onclick=e=>{const p=e.target.closest(".plate");if(p)openSheet(state.items.find(i=>i.id===p.dataset.id))};
 $("#prevPg").onclick=()=>{const P=pages(),i=P.indexOf(curKey());if(i>0)goPage(P[i-1])};
 $("#nextPg").onclick=()=>{const P=pages(),i=P.indexOf(curKey());if(i<P.length-1)goPage(P[i+1])};
-(()=>{const pg=document.querySelector(".page");let sx=0,sy=0,on=false;
-  pg.addEventListener("touchstart",e=>{if(e.touches.length!==1)return;sx=e.touches[0].clientX;sy=e.touches[0].clientY;on=true},{passive:true});
-  pg.addEventListener("touchend",e=>{if(!on)return;on=false;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
-    if(Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;
-    const P=pages(),i=P.indexOf(curKey()),j=dx<0?i+1:i-1;if(j<0||j>=P.length)return;
-    pg.classList.remove("in-l","in-r");void pg.offsetWidth;pg.classList.add(dx<0?"in-r":"in-l");
-    setKey(P[j]);render()},{passive:true});
-  pg.addEventListener("animationend",()=>pg.classList.remove("in-l","in-r"));
-})();
+
 $("#emptyBox").onclick=e=>{if(e.target.closest("[data-addhere]"))openSheet(null)};
 $("#shownf").onclick=e=>{const b=e.target.closest("[data-s]");if(b){state.filter.shown=b.dataset.s;render()}};
 $("#q").oninput=e=>{state.filter.q=e.target.value;render()};
