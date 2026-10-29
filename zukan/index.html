@@ -322,20 +322,20 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 .toolrow button[aria-pressed="true"]{border-color:var(--brown);background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--brown)}
 .toolpanel{position:relative;z-index:1;margin-top:8px;background:var(--bg);border:1px dashed var(--line);border-radius:12px;padding:10px}
 .toolpanel .search,.toolpanel .sort{width:100%}
-.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:25;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--paper);border-top:1px solid var(--line);padding:8px max(10px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));box-shadow:0 -4px 16px rgba(59,42,34,.08)}
-.bottomnav button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:7px 2px;font-family:var(--f-display);font-size:13px;color:var(--ink-soft);display:flex;align-items:center;justify-content:center;gap:4px;min-width:0;white-space:nowrap}
-.bottomnav button i{font-style:normal;color:#b08a43;font-size:14px}
+.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:25;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--paper);border-top:1px solid var(--line);padding:8px max(10px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));box-shadow:0 -4px 16px rgba(59,42,34,.08)}
+.bottomnav button{border:1px solid var(--line);background:var(--paper);border-radius:14px;padding:5px 1px 4px;font-family:var(--f-display);font-size:11px;color:var(--ink-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-width:0;white-space:nowrap}
+.bottomnav button i{font-style:normal;color:#b08a43;font-size:16px;line-height:1.2}
 .bottomnav button[aria-pressed="true"]{background:var(--brown);border-color:var(--brown);color:var(--paper)}
 .bottomnav button[aria-pressed="true"] i{color:#f0dc9e}
 .fab{bottom:calc(78px + env(safe-area-inset-bottom,0px))!important}
 .toast{bottom:calc(140px + env(safe-area-inset-bottom,0px))!important}
+.kz-page{max-width:560px;margin:16px auto 0;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:18px 14px;box-shadow:var(--shadow);display:grid;gap:4px}
 </style>
 
 <div class="wrap">
   <header class="top">
     <div class="brand"><span class="rays" aria-hidden="true"></span><span class="spark s1" aria-hidden="true">✦</span><span class="spark s2" aria-hidden="true">✦</span><span class="spark s3" aria-hidden="true">✦</span><span class="spark s4" aria-hidden="true">✦</span><span class="crest" aria-hidden="true">♥</span><small>Ouchi Encyclopedia</small><h1>おうち図鑑</h1><div class="flour" aria-hidden="true"><i></i>✿<i></i></div></div>
     <div class="hd-right">
-      <button class="kisekae" id="kisekae"><span>✿</span> きせかえ</button>
     </div>
   </header>
 
@@ -381,6 +381,11 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
     <div id="wishEmpty"></div>
   </section>
 
+  <section id="view-kisekae" hidden>
+    <div class="album-head"><h2>きせかえ</h2><p>色とがらをえらんで、好きな図鑑に</p></div>
+    <div id="kzBox"></div>
+  </section>
+
   <section id="view-album" hidden>
     <div class="album-head"><h2>卒業アルバム</h2><p>手放した子たちの思い出。写真は残るから安心してね</p></div>
     <div class="grid c3 album" id="albumGrid"></div>
@@ -394,6 +399,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
   <button id="tab-sort" aria-pressed="false"><i aria-hidden="true">⚖</i>仕分け</button>
   <button id="tab-album" aria-pressed="false"><i aria-hidden="true">❀</i>アルバム</button>
   <button id="tab-wish" aria-pressed="false"><i aria-hidden="true">♡</i>ほしい</button>
+  <button id="tab-kisekae" aria-pressed="false"><i aria-hidden="true">✿</i>きせかえ</button>
 </nav>
 <div id="sheetRoot"></div>
 <div id="toastRoot"></div>
@@ -432,14 +438,13 @@ function applyLook(){const r=document.documentElement;
 applyLook();
 async function setLook(p){look={...look,...p};applyLook();try{localStorage.setItem(SKEY,JSON.stringify(look))}catch(e){}
   if(state.lookDoc){try{await state.lookDoc.set({skin:look.skin,pat:look.pat,cols:look.cols||2,limits:look.limits||{}})}catch(e){}}}
-function openKisekae(){const root=$("#sheetRoot");
-  const draw=()=>{root.innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="kz-t">
-    <h2 id="kz-t"><span>きせかえ</span><button class="x" id="sh-x" aria-label="閉じる">×</button></h2>
+function openKisekae(){const root=$("#kzBox");
+  const draw=()=>{root.innerHTML=`<div class="kz-page">
     <div class="kz-sec"><h3>いろ</h3><div class="swatches">${SKINS.map(([k,l,c,sub])=>`<button class="sw" data-skin="${k}" aria-pressed="${look.skin===k}"><span class="dot" style="background:${c}"></span>${l}${sub?`<small style="color:var(--ink-soft);font-size:10.5px;margin-top:-4px">${sub}</small>`:""}</button>`).join("")}</div></div>
     <div class="kz-sec"><h3>がら</h3><div class="pats">${PATS.map(([k,l])=>`<button class="pt" data-pat="${k}" aria-pressed="${look.pat===k}"><span class="tile ${k}"></span>${l}</button>`).join("")}</div></div>
     ${state.mode==="local"?`<div class="kz-sec"><h3>バックアップ（写真ごと保存できます）</h3><div class="backup"><button id="bk-out">ファイルに書き出す</button><label for="bk-in">ファイルから読みこむ</label><input id="bk-in" type="file" accept=".json,application/json"></div><small style="color:var(--ink-soft);font-size:11.5px">機種変更やデータの引っこしのときに使ってね。読みこむと、今ある図鑑に足されます</small></div>`:""}
-    <div class="actions"><span style="font-size:12px;color:var(--ink-soft)">${state.mode==="local"?"":"どの端末で開いても同じきせかえになります"}</span><button class="btn-main" id="sh-x2">できた</button></div>
-  </div></div>`};
+    ${state.mode==="local"?"":`<p style="font-size:12px;color:var(--ink-soft);margin:0">どの端末で開いても同じきせかえになります</p>`}
+  </div>`};
   draw();
   root.onsubmit=null;root.oninput=null;
   root.onchange=async e=>{if(e.target.id!=="bk-in"||!e.target.files[0])return;
@@ -451,7 +456,6 @@ function openKisekae(){const root=$("#sheetRoot");
     if(e.target.id==="bk-out"){const name=`おうち図鑑_${new Date().toISOString().slice(0,10)}.json`,blob=new Blob([JSON.stringify({app:"ouchi-zukan",v:1,at:Date.now(),look,items:state.items})],{type:"application/json"});
       try{const f=new File([blob],name,{type:"application/json"});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(err){if(err&&err.name==="AbortError")return}
       const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);return}
-    if(e.target.id==="scrim"||e.target.id==="sh-x"||e.target.id==="sh-x2"){root.innerHTML="";return}
     const s=e.target.closest("[data-skin]");if(s&&s.classList.contains("sw")){setLook({skin:s.dataset.skin});draw();return}
     const p=e.target.closest(".pt");if(p){setLook({pat:p.dataset.pat});draw()}
   };
@@ -739,7 +743,7 @@ function openSheet(it,opt={}){
 /* ---------- イベント ---------- */
 document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#sheetRoot").innerHTML=""});
 $("#add").onclick=()=>openSheet(null);
-$("#kisekae").onclick=openKisekae;
+
 $("#toolrow").onclick=e=>{const b=e.target.closest("[data-tool]");if(!b)return;const t=b.dataset.tool;
   if(t==="size"){const c=look.cols||2;setLook({cols:c===1?2:c===2?3:1});render();return}
   state.tool=state.tool===t?"":t;const tp=$("#toolpanel");tp.hidden=!state.tool;
@@ -759,9 +763,9 @@ $("#emptyBox").onclick=e=>{if(e.target.closest("[data-addhere]"))openSheet(null)
 $("#shownf").onclick=e=>{const b=e.target.closest("[data-s]");if(b){state.filter.shown=b.dataset.s;render()}};
 $("#q").oninput=e=>{state.filter.q=e.target.value;render()};
 $("#sortby").onchange=e=>{state.sort=e.target.value;render()};
-function setTab(t){state.tab=t;["zukan","sort","album","wish"].forEach(k=>{$("#tab-"+k).setAttribute("aria-pressed",t===k);$("#view-"+k).hidden=t!==k});
-  $("#add").hidden=t!=="zukan";if(t==="sort"){state.sortQueue=null;renderSort()}if(t==="album")renderAlbum();if(t==="wish")renderWish()}
-$("#tab-zukan").onclick=()=>setTab("zukan");$("#tab-sort").onclick=()=>setTab("sort");$("#tab-album").onclick=()=>setTab("album");$("#tab-wish").onclick=()=>setTab("wish");
+function setTab(t){state.tab=t;["zukan","sort","album","wish","kisekae"].forEach(k=>{$("#tab-"+k).setAttribute("aria-pressed",t===k);$("#view-"+k).hidden=t!==k});
+  $("#add").hidden=t!=="zukan";if(t==="sort"){state.sortQueue=null;renderSort()}if(t==="album")renderAlbum();if(t==="wish")renderWish();if(t==="kisekae")openKisekae()}
+$("#tab-zukan").onclick=()=>setTab("zukan");$("#tab-sort").onclick=()=>setTab("sort");$("#tab-album").onclick=()=>setTab("album");$("#tab-wish").onclick=()=>setTab("wish");$("#tab-kisekae").onclick=()=>setTab("kisekae");
 $("#wishAdd").onclick=()=>openSheet(null,{wish:true});
 $("#wishList").onclick=e=>{const g=e.target.closest("[data-got]");if(g){const w=state.items.find(i=>i.id===g.dataset.got);if(w)gotIt(w);return}
   const o=e.target.closest("[data-wid]");if(o)openSheet(state.items.find(i=>i.id===o.dataset.wid))};
