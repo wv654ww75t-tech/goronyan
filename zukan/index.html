@@ -346,6 +346,21 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 .index button[aria-pressed="true"]::before{content:"♥";left:50%;right:auto;top:-11px;height:auto;width:auto;transform:translateX(-50%);background:none;opacity:1;color:var(--red);font-size:11px;line-height:1}
 .page{border-color:var(--g2)}
 .page::after{border-color:color-mix(in srgb,var(--g2) 45%,transparent)}
+.gear{position:relative;width:38px;height:38px;border-radius:50%;border:1.5px solid var(--g2);background:var(--paper);color:#b08a43;display:grid;place-items:center;padding:0;box-shadow:0 0 0 2px var(--paper),0 0 0 3px color-mix(in srgb,var(--g2) 45%,transparent)}
+.gear[aria-expanded="true"]{background:var(--goldplate);color:#5a3f15}
+.gear svg{display:block}
+.gear .dot{position:absolute;top:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--paper)}
+@media (prefers-reduced-motion:no-preference){.gear svg{transition:transform .35s ease}.gear[aria-expanded="true"] svg{transform:rotate(60deg)}}
+.toolpanel{display:grid;gap:10px;margin-top:12px;border:1px solid color-mix(in srgb,var(--g2) 55%,var(--line));border-radius:14px;background:var(--bg);padding:12px}
+.tp-row{display:grid;grid-template-columns:5.2em 1fr;gap:8px;align-items:center}
+.tp-lab{font-family:var(--f-display);font-size:12.5px;color:var(--ink-soft)}
+.tp-row .search,.tp-row .sort{width:100%;min-width:0}
+.sizes2{display:flex;gap:6px}
+.sizes2 button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 14px;font-family:var(--f-display);font-size:13px;color:var(--ink-soft)}
+.sizes2 button[aria-pressed="true"]{background:var(--goldplate);color:#3d2a0e;border-color:var(--g1)}
+.tp-foot{display:flex;justify-content:space-between;gap:8px}
+.tp-foot button{border:0;background:none;font-family:var(--f-display);font-size:12.5px;color:var(--brown);text-decoration:underline;padding:2px}
+.page-head{align-items:center}
 </style>
 
 <div class="wrap">
@@ -359,22 +374,18 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
     <div class="pmode" id="pmode" role="group" aria-label="ページの分け方"><div class="pm-in"><button data-m="cat" aria-pressed="true"><i aria-hidden="true">❦</i>しゅるい別</button><button data-m="place" aria-pressed="false"><i aria-hidden="true">⌂</i>場所別</button></div></div>
     <nav class="index" id="cats" aria-label="ページ"></nav>
     <div class="page">
-    <div class="page-head"><h2 id="pageTitle">ぜんぶのページ</h2><span class="pg" id="pageNo"></span></div>
-    <div class="toolrow" id="toolrow">
-      <button data-tool="search"><i aria-hidden="true" style="font-size:22px">⌕</i>さがす</button>
-      <button data-tool="sort"><i aria-hidden="true">⇅</i>ならべかえ</button>
-      <button data-tool="shown"><i aria-hidden="true">✿</i>置き方</button>
-      <button data-tool="size"><i id="sizeLbl" style="font-family:var(--f-display);font-size:17px">中</i>大きさ</button>
-    </div>
+    <div class="page-head"><h2 id="pageTitle">ぜんぶのページ</h2><div class="head-r"><span class="pg" id="pageNo"></span><button class="gear" id="gear" aria-label="さがす・ならべかえ・表示の設定" aria-expanded="false"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" stroke-width="3.6" stroke-dasharray="3.2 3.24"/><circle cx="12" cy="12" r="6.2" fill="currentColor"/><circle cx="12" cy="12" r="2.6" fill="var(--paper)"/></svg><i class="dot" id="gearDot" hidden></i></button></div></div>
     <div class="toolpanel" id="toolpanel" hidden>
-      <div data-panel="search"><input class="search" id="q" type="search" placeholder="名前・推し・置き場所でさがす" aria-label="さがす"></div>
-      <div data-panel="sort"><select class="sort" id="sortby" aria-label="並び順">
+      <div class="tp-row"><span class="tp-lab">さがす</span><input class="search" id="q" type="search" placeholder="名前・推し・置き場所" aria-label="さがす"></div>
+      <div class="tp-row"><span class="tp-lab">ならべかえ</span><select class="sort" id="sortby" aria-label="並び順">
         <option value="no">図鑑No.順</option>
         <option value="new">新しく登録した順</option>
         <option value="love">好き度が高い順</option>
         <option value="place">置き場所ごと</option>
       </select></div>
-      <div data-panel="shown"><div class="chips" id="shownf" role="group" aria-label="置き方"></div></div>
+      <div class="tp-row"><span class="tp-lab">置き方</span><div class="chips" id="shownf" role="group" aria-label="置き方"></div></div>
+      <div class="tp-row"><span class="tp-lab">大きさ</span><div class="sizes2" id="sizes2" role="group" aria-label="表示の大きさ"><button data-cols="1">大</button><button data-cols="2">中</button><button data-cols="3">小</button></div></div>
+      <div class="tp-foot"><button id="tpReset">しぼりこみを解除</button><button id="tpClose">とじる</button></div>
     </div>
     <div id="dispBox"></div>
     <div class="grid" id="grid"></div>
@@ -563,11 +574,11 @@ function render(){
   nx.textContent=pi<pn-1?`${pLabel(PG[pi+1])} ›`:"";
   renderDisp(key);renderArrivals();
   const cols=String(look.cols||2);$("#grid").className="grid c"+cols;
-  $("#sizeLbl").textContent={1:"大",2:"中",3:"小"}[cols];
-  const tp=state.tool||"";document.querySelectorAll("#toolrow [data-tool]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.tool===tp||(b.dataset.tool==="search"&&!!state.filter.q)||(b.dataset.tool==="shown"&&state.filter.shown!=="all")));
+  document.querySelectorAll("#sizes2 button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.cols===cols));
+  $("#gearDot").hidden=!(state.filter.q||state.filter.shown!=="all"||state.sort!=="no");
   const tot=its.length||1;
   $("#bar").innerHTML=its.length?[["keep","--keep"],["maybe","--maybe"],["let","--let"]].map(([k,v])=>`<i style="width:${cnt(k)/tot*100}%;background:var(${v})"></i>`).join(""):"";
-  $("#shownf").innerHTML=[["all","置き方：ぜんぶ"],["display","飾ってる"],["stored","しまってる"],["use","ふだん使い"]].map(([k,l])=>`<button class="chip" data-s="${k}" aria-pressed="${state.filter.shown===k}">${l}</button>`).join("");
+  $("#shownf").innerHTML=[["all","ぜんぶ"],["display","飾ってる"],["stored","しまってる"],["use","ふだん使い"]].map(([k,l])=>`<button class="chip" data-s="${k}" aria-pressed="${state.filter.shown===k}">${l}</button>`).join("");
   const list=filtered();
   $("#grid").innerHTML=list.map(it=>{const j=it.judge||"none",src=imgSrc(it);
     return `<button class="plate" data-id="${esc(it.id)}">
@@ -760,11 +771,11 @@ function openSheet(it,opt={}){
 document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#sheetRoot").innerHTML=""});
 $("#add").onclick=()=>openSheet(null);
 
-$("#toolrow").onclick=e=>{const b=e.target.closest("[data-tool]");if(!b)return;const t=b.dataset.tool;
-  if(t==="size"){const c=look.cols||2;setLook({cols:c===1?2:c===2?3:1});render();return}
-  state.tool=state.tool===t?"":t;const tp=$("#toolpanel");tp.hidden=!state.tool;
-  tp.querySelectorAll("[data-panel]").forEach(d=>d.hidden=d.dataset.panel!==state.tool);render();
-  if(state.tool==="search")setTimeout(()=>$("#q").focus(),30)};
+function toggleTools(open){const tp=$("#toolpanel"),o=open??tp.hidden;tp.hidden=!o;$("#gear").setAttribute("aria-expanded",o)}
+$("#gear").onclick=()=>toggleTools();
+$("#tpClose").onclick=()=>toggleTools(false);
+$("#sizes2").onclick=e=>{const b=e.target.closest("[data-cols]");if(b){setLook({cols:+b.dataset.cols});render()}};
+$("#tpReset").onclick=()=>{state.filter.q="";state.filter.shown="all";state.sort="no";$("#q").value="";$("#sortby").value="no";render()};
 $("#grid").onclick=e=>{const p=e.target.closest(".plate");if(p)openSheet(state.items.find(i=>i.id===p.dataset.id))};
 $("#tally").onclick=e=>{const b=e.target.closest("[data-j]");if(b){state.filter.judge=b.dataset.j;render();$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}};
 function goPage(c){setKey(c);render();$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}
