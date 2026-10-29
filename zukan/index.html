@@ -294,6 +294,26 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
 .backup{display:flex;gap:8px;flex-wrap:wrap}
 .backup button,.backup label{border:1px solid var(--brown);background:var(--paper);color:var(--brown);border-radius:999px;padding:7px 14px;font-family:var(--f-display);font-size:13px;cursor:pointer}
 .backup input{position:absolute;width:1px;height:1px;opacity:0}
+.wish-add{display:flex;justify-content:center;margin:12px 0 4px}
+.wish-list{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:10px;max-width:620px;margin-inline:auto}
+.wish-list li{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px;display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:start;box-shadow:var(--shadow)}
+.wish-list .th{width:64px;height:64px;border-radius:10px;overflow:hidden;background:var(--bg);display:grid;place-items:center;font-family:var(--f-display);color:var(--ink-soft);font-size:22px;border:3px double #c9a55a}
+.wish-list .th img{width:100%;height:100%;object-fit:cover}
+.wish-list .bd{min-width:0;display:grid;gap:3px}
+.wish-list .bd b{font-family:var(--f-display);font-weight:500;font-size:15px;overflow-wrap:anywhere;text-align:left}
+.wish-list .bd small{color:var(--ink-soft);font-size:12px}
+.wish-list .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.wish-list .open{border:0;background:none;padding:0;text-align:left;display:grid;gap:3px;min-width:0;cursor:pointer}
+.sim-badge{font-size:11.5px;border-radius:999px;padding:1px 9px;background:var(--maybe-bg);color:var(--maybe);font-weight:700}
+.sim-badge.zero{background:var(--keep-bg);color:var(--keep)}
+.got{border:0;background:var(--red);color:#fff;border-radius:999px;padding:5px 12px;font-family:var(--f-display);font-size:12.5px;margin-left:auto}
+.simbox{background:var(--maybe-bg);border-radius:10px;padding:10px 12px;font-size:13px}
+.simbox.zero{background:var(--keep-bg)}
+.simbox p{margin:0 0 6px;color:var(--ink)}
+.simbox ul{list-style:none;margin:0;padding:0;display:flex;gap:8px;overflow-x:auto}
+.simbox li{flex:none;width:64px;text-align:center;font-size:11px;line-height:1.3}
+.simbox li span{display:grid;place-items:center;width:64px;height:64px;border-radius:8px;overflow:hidden;background:var(--paper);border:2px solid #c9a55a;font-family:var(--f-display);margin-bottom:3px}
+.simbox li img{width:100%;height:100%;object-fit:cover}
 </style>
 
 <div class="wrap">
@@ -305,6 +325,7 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
         <button id="tab-zukan" aria-pressed="true">図鑑</button>
         <button id="tab-sort" aria-pressed="false">仕分け</button>
         <button id="tab-album" aria-pressed="false">アルバム</button>
+        <button id="tab-wish" aria-pressed="false">ほしい</button>
       </div>
     </div>
   </header>
@@ -341,6 +362,13 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
     <div class="sort-wrap" id="sortBox"></div>
   </section>
 
+  <section id="view-wish" hidden>
+    <div class="album-head"><h2>ほしいものリスト</h2><p>買う前に、似たのをもう持ってないかチェックできるよ</p></div>
+    <div class="wish-add"><button class="btn-main" id="wishAdd">＋ ほしいものを追加</button></div>
+    <ul class="wish-list" id="wishList"></ul>
+    <div id="wishEmpty"></div>
+  </section>
+
   <section id="view-album" hidden>
     <div class="album-head"><h2>卒業アルバム</h2><p>手放した子たちの思い出。写真は残るから安心してね</p></div>
     <div class="grid c3 album" id="albumGrid"></div>
@@ -362,13 +390,16 @@ const state={pmode:"cat",items:[],filter:{cat:"all",place:"all",judge:"all",show
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const pad=n=>String(n||0).padStart(3,"0");
-const live=()=>state.items.filter(i=>!i.grad);
+const live=()=>state.items.filter(i=>!i.grad&&!i.wish);
+function similar(d){const nm=String(d.name||"").replace(/[\s（）()・、。!！?？]/g,"");const grams=new Set();for(let i=0;i<nm.length-1;i++)grams.add(nm.slice(i,i+2));
+  return live().filter(i=>{if(i.id===d.id)return false;if(d.series&&i.series&&i.series.trim()===d.series.trim()&&i.cat===d.cat)return true;
+    const n2=String(i.name||"");let hit=0;grams.forEach(g=>{if(n2.includes(g))hit++});return grams.size&&hit>=Math.min(2,grams.size)}).slice(0,8)}
 function placeList(){const ps=[...new Set(live().map(i=>(i.place||"").trim()))];const named=ps.filter(Boolean).sort((a,b)=>a.localeCompare(b,"ja"));return ["all",...named,...(ps.includes("")&&named.length?["__none"]:[])]}
 const pages=()=>state.pmode==="place"?placeList():PAGES;
 function curKey(){if(state.pmode!=="place")return state.filter.cat;if(!placeList().includes(state.filter.place))state.filter.place="all";return state.filter.place}
 function setKey(k){if(state.pmode==="place")state.filter.place=k;else state.filter.cat=k}
 const pLabel=k=>state.pmode==="place"?(k==="all"?"ぜんぶ":k==="__none"?"場所なし":k):LABEL(k);
-const monthOf=it=>it.since||(it.created?new Date(it.created).toISOString().slice(0,7):"");
+const monthOf=it=>it.wish?"":it.since||(it.created?new Date(it.created).toISOString().slice(0,7):"");
 const imgSrc=it=>it.photo?("/_blob/"+it.photo):(it.photoData||"");
 
 /* ---------- きせかえ ---------- */
@@ -392,7 +423,7 @@ function openKisekae(){const root=$("#sheetRoot");
     <div class="actions"><span style="font-size:12px;color:var(--ink-soft)">${state.mode==="local"?"":"どの端末で開いても同じきせかえになります"}</span><button class="btn-main" id="sh-x2">できた</button></div>
   </div></div>`};
   draw();
-  root.onsubmit=null;
+  root.onsubmit=null;root.oninput=null;
   root.onchange=async e=>{if(e.target.id!=="bk-in"||!e.target.files[0])return;
     try{const data=JSON.parse(await e.target.files[0].text());const its=Array.isArray(data)?data:data.items;if(!Array.isArray(its))throw 0;
       let n=0;for(const it of its){if(it&&it.id&&it.name){await saveItem({...it});n++}}
@@ -517,6 +548,7 @@ function render(){
   $("#status").textContent=!state.loaded?"読みこみ中…":state.mode==="db"?`${its.length}件を登録中・どの端末から開いても同じ図鑑です`:"このスマホの中に保存しています・ときどき「きせかえ」からバックアップしてね";
   if(state.tab==="sort")renderSort();
   if(state.tab==="album")renderAlbum();
+  if(state.tab==="wish")renderWish();
 }
 
 /* ---------- 飾るメンバー ---------- */
@@ -535,7 +567,7 @@ function openRotate(pl){const root=$("#sheetRoot");
       <p class="rot-sub">飾ってる（${on.length}${lim?" / "+lim:""}）</p><ul class="rot-list">${on.map(i=>row(i,true)).join("")||'<li style="grid-template-columns:1fr"><small style="color:var(--ink-soft)">まだ誰も飾ってないよ</small></li>'}</ul>
       <p class="rot-sub">しまってる・ほか（ひさしぶりの子が上）</p><ul class="rot-list">${off.map(i=>row(i,false)).join("")||'<li style="grid-template-columns:1fr"><small style="color:var(--ink-soft)">ここにある子はみんな飾ってるよ</small></li>'}</ul>
       <div class="actions" style="margin-top:14px"><span></span><button class="btn-main" id="sh-x2">できた</button></div></div></div>`};
-  draw();root.onsubmit=null;root.onchange=null;
+  draw();root.onsubmit=null;root.onchange=null;root.oninput=null;
   root.onclick=async e=>{
     if(e.target.id==="scrim"||e.target.id==="sh-x"||e.target.id==="sh-x2"){root.innerHTML="";return}
     const l=e.target.closest("[data-lim]");if(l){const cur=(look.limits||{})[pl]||0,nv=Math.max(0,Math.min(99,cur+ +l.dataset.lim));await setLook({limits:{...(look.limits||{}),[pl]:nv}});draw();render();return}
@@ -552,6 +584,18 @@ function renderArrivals(){const now=new Date(),ms=[];
   const cnt=m=>state.items.filter(i=>monthOf(i)===m).length,vals=ms.map(cnt),mx=Math.max(1,...vals),cur=vals[5],prev=vals[4];
   $("#arr").innerHTML=`<div class="arr-now"><small>今月のお迎え</small><b>${cur}</b><span>こ</span><small>${cur>prev?`先月より${cur-prev}こ多め`:cur<prev?`先月より${prev-cur}こ少なめ`:"先月とおなじ"}</small></div>
     <div class="arr-bars">${ms.map((m,i)=>`<div class="${i===5?"now":""}"><span>${vals[i]||""}</span><i style="height:${vals[i]/mx*60}px"></i><em>${+m.slice(5)}月</em></div>`).join("")}</div>`}
+
+/* ---------- ほしいものリスト ---------- */
+function simHtml(d){const sm=similar(d);return `<div class="simbox ${sm.length?"":"zero"}" id="simbox"><p>${sm.length?`似てるかも：もう持ってる子が ${sm.length}こ`:d.name||d.series?"似たものは図鑑にないよ":"なまえや推しを入れると、図鑑と見くらべるよ"}</p>${sm.length?`<ul>${sm.map(i=>`<li><span>${thumb(i)}</span>${esc(i.name)}</li>`).join("")}</ul>`:""}</div>`}
+function thumb(it){const src=imgSrc(it);return src?`<img src="${esc(src)}" alt="">`:esc((it.name||"？").slice(0,1))}
+function renderWish(){const ws=state.items.filter(i=>i.wish).sort((a,b)=>(b.love||0)-(a.love||0)||(b.created||0)-(a.created||0));
+  $("#wishList").innerHTML=ws.map(w=>{const sm=similar(w).length;
+    return `<li><span class="th">${thumb(w)}</span><div class="bd"><button class="open" data-wid="${esc(w.id)}"><b>${esc(w.name)}</b><small>${esc([LABEL(w.cat),w.series,w.price].filter(Boolean).join("・"))}</small>${w.love?`<small style="color:var(--red)">ほしい度 ${"♥".repeat(w.love)}</small>`:""}</button>
+      <div class="row"><span class="sim-badge ${sm?"":"zero"}">${sm?`似たの${sm}こ持ってる`:"似たのは持ってない"}</span><button class="got" data-got="${esc(w.id)}">お迎えした！</button></div></div></li>`}).join("");
+  $("#wishEmpty").innerHTML=ws.length?"":`<div class="empty"><div class="frame"><img src="frame-square.webp" alt=""><span>ほしい子を<br>書いておく<br>ところ</span></div><p style="margin-top:14px">気になったものを追加しておくと、<br>買う前に図鑑と見くらべられるよ</p></div>`}
+async function gotIt(w){const it={...w,no:nextNo(),created:Date.now(),judge:"none"};delete it.wish;delete it.price;
+  if(w.price)it.memo=[w.memo,"お値段："+w.price].filter(Boolean).join("\n");
+  try{await saveItem(it);setTab("zukan");toast(`No.${pad(it.no)} として図鑑入り！置き場所や写真を足してね`);setTimeout(()=>openSheet(state.items.find(i=>i.id===it.id)||it),400)}catch(e){toast("保存できませんでした")}}
 
 /* ---------- 卒業アルバム ---------- */
 function renderAlbum(){const gs=state.items.filter(i=>i.grad).sort((a,b)=>(b.gradAt||0)-(a.gradAt||0));
@@ -606,15 +650,15 @@ $("#sortBox").addEventListener("click",async e=>{
 });
 
 /* ---------- 登録・編集シート ---------- */
-function openSheet(it){
+function openSheet(it,opt={}){
   const isNew=!it;
-  const d=it?{...it}:{id:newId(),no:nextNo(),name:"",cat:state.pmode==="cat"&&state.filter.cat!=="all"?state.filter.cat:"ぬい",series:"",place:state.pmode==="place"&&!["all","__none"].includes(state.filter.place)?state.filter.place:"",since:"",shown:"",judge:"none",love:0,memo:"",created:Date.now()};
+  const d=it?{...it}:opt.wish?{id:newId(),wish:true,no:0,name:"",cat:"ぬい",series:"",price:"",love:0,memo:"",created:Date.now()}:{id:newId(),no:nextNo(),name:"",cat:state.pmode==="cat"&&state.filter.cat!=="all"?state.filter.cat:"ぬい",series:"",place:state.pmode==="place"&&!["all","__none"].includes(state.filter.place)?state.filter.place:"",since:"",shown:"",judge:"none",love:0,memo:"",created:Date.now()};
   let pending=null;
   const root=$("#sheetRoot");
   const draw=()=>{
     const src=pending?pending.data:imgSrc(d);
     root.innerHTML=`<div class="scrim" id="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-t">
-      <h2 id="sh-t"><span>${isNew?"図鑑に登録":"No."+pad(d.no)+" を編集"}</span><button class="x" id="sh-x" aria-label="閉じる">×</button></h2>
+      <h2 id="sh-t"><span>${d.wish?(isNew?"ほしいものを追加":"ほしいものを編集"):isNew?"図鑑に登録":"No."+pad(d.no)+" を編集"}</span><button class="x" id="sh-x" aria-label="閉じる">×</button></h2>
       <form class="form" id="f">
         <div class="photo"><div class="pv">${src?`<img src="${esc(src)}" alt="">`:"写真<br>なし"}</div>
           <div><label class="btn" for="f-photo">${src?"写真を変える":"写真をえらぶ"}</label><input id="f-photo" type="file" accept="image/*">
@@ -624,21 +668,23 @@ function openSheet(it){
           <div class="field"><label for="f-cat">カテゴリ</label><select id="f-cat">${CATS.map(c=>`<option ${c===d.cat?"selected":""}>${c}</option>`).join("")}</select></div>
           <div class="field"><label for="f-series">推し・シリーズ</label><input id="f-series" maxlength="40" value="${esc(d.series)}" placeholder="例）刀剣乱舞"></div>
         </div>
-        <div class="row2">
+        ${d.wish?(()=>`${simHtml(d)}
+        <div class="field"><label for="f-price">お値段（メモ）</label><input id="f-price" maxlength="30" value="${esc(d.price||"")}" placeholder="例）2,200円"></div>`)():`<div class="row2">
           <div class="field"><label for="f-place">置き場所</label><input id="f-place" maxlength="40" list="places" value="${esc(d.place)}" placeholder="例）本棚の上"><datalist id="places">${[...new Set(live().map(i=>i.place).filter(Boolean))].map(p=>`<option value="${esc(p)}">`).join("")}</datalist></div>
           <div class="field"><label for="f-since">お迎えした日</label><input id="f-since" type="month" value="${esc(d.since)}"></div>
-        </div>
-        <div class="field"><span class="lab">置き方</span><div class="seg" data-k="shown">${Object.entries(SHOWN).map(([k,l])=>`<button type="button" data-v="${k}" aria-pressed="${d.shown===k}">${l}</button>`).join("")}</div></div>
-        <div class="field"><span class="lab">好き度</span><div class="hearts" id="hearts">${[1,2,3,4,5].map(n=>`<button type="button" data-n="${n}" class="${n<=d.love?"on":""}" aria-label="好き度${n}">♥</button>`).join("")}</div></div>
-        <div class="field"><span class="lab">いる？いらない？</span><div class="seg j" data-k="judge">${Object.entries(JUDGE).map(([k,l])=>`<button type="button" class="${k}" data-v="${k}" aria-pressed="${(d.judge||"none")===k}">${l}</button>`).join("")}</div></div>
+        </div>`}
+        ${d.wish?"":`<div class="field"><span class="lab">置き方</span><div class="seg" data-k="shown">${Object.entries(SHOWN).map(([k,l])=>`<button type="button" data-v="${k}" aria-pressed="${d.shown===k}">${l}</button>`).join("")}</div></div>
+        `}<div class="field"><span class="lab">${d.wish?"ほしい度":"好き度"}</span><div class="hearts" id="hearts">${[1,2,3,4,5].map(n=>`<button type="button" data-n="${n}" class="${n<=d.love?"on":""}" aria-label="好き度${n}">♥</button>`).join("")}</div></div>
+        ${d.wish?"":`<div class="field"><span class="lab">いる？いらない？</span><div class="seg j" data-k="judge">${Object.entries(JUDGE).map(([k,l])=>`<button type="button" class="${k}" data-v="${k}" aria-pressed="${(d.judge||"none")===k}">${l}</button>`).join("")}</div></div>`}
         <div class="field"><label for="f-memo">メモ</label><textarea id="f-memo" maxlength="400" placeholder="思い出、どこで買ったか、など">${esc(d.memo)}</textarea></div>
         <div id="cf"></div>
+        ${!isNew&&d.wish?`<div class="actions" style="justify-content:flex-start"><button type="button" class="btn-grad" id="gotit" style="background:var(--red);color:#fff;border-color:var(--red)">お迎えした！→ 図鑑へ</button></div>`:""}
         ${!isNew&&d.grad?`<div class="actions" style="justify-content:flex-start"><button type="button" class="btn-grad" id="ungrad">図鑑にもどす</button></div>`:""}
         ${!isNew&&!d.grad&&d.judge==="let"?`<div class="actions" style="justify-content:flex-start"><button type="button" class="btn-grad" id="grad">手放した → 卒業アルバムへ</button></div>`:""}
-        <div class="actions">${isNew?"<span></span>":`<button type="button" class="btn-del" id="del">${d.grad?"アルバムから消す":"図鑑から消す"}</button>`}<button class="btn-main" id="save">${isNew?"登録する":"保存する"}</button></div>
+        <div class="actions">${isNew?"<span></span>":`<button type="button" class="btn-del" id="del">${d.wish?"リストから消す":d.grad?"アルバムから消す":"図鑑から消す"}</button>`}<button class="btn-main" id="save">${isNew?(d.wish?"追加する":"登録する"):"保存する"}</button></div>
       </form></div></div>`;
   };
-  const sync=()=>{["name","series","place","since","memo"].forEach(k=>d[k]=$("#f-"+k).value);d.cat=$("#f-cat").value};
+  const sync=()=>{["name","series","place","since","memo","price"].forEach(k=>{const el=$("#f-"+k);if(el)d[k]=el.value});d.cat=$("#f-cat").value};
   draw();
   root.onclick=async e=>{
     if(e.target.id==="scrim"||e.target.id==="sh-x"){root.innerHTML="";return}
@@ -646,6 +692,7 @@ function openSheet(it){
     const h=e.target.closest(".hearts button");if(h){sync();const n=+h.dataset.n;d.love=d.love===n?0:n;draw();return}
     if(e.target.id==="del"){$("#cf").innerHTML=`<div class="confirm"><span>「${esc(d.name)}」を図鑑から消しますか？</span><span><button type="button" class="no" id="cf-no">やめる</button> <button type="button" class="yes" id="cf-yes">消す</button></span></div>`;return}
     if(e.target.id==="cf-no"){$("#cf").innerHTML="";return}
+    if(e.target.id==="gotit"){sync();root.innerHTML="";await gotIt(d);return}
     if(e.target.id==="grad"){sync();root.innerHTML="";await graduate(d);return}
     if(e.target.id==="ungrad"){sync();root.innerHTML="";try{const {grad,gradAt,...rest}=d;await saveItem(rest);toast("図鑑にもどしました")}catch(err){toast("保存できませんでした")}return}
     if(e.target.id==="cf-yes"){try{await removeItem(d.id);root.innerHTML="";toast("消しました")}catch(err){toast("消せませんでした")}return}
@@ -654,6 +701,7 @@ function openSheet(it){
     if(e.target.id!=="f-photo"||!e.target.files[0])return;sync();
     try{pending=await shrink(e.target.files[0]);draw()}catch(err){toast("この写真は読みこめませんでした")}
   };
+  root.oninput=e=>{if(!d.wish||!["f-name","f-series","f-cat"].includes(e.target.id))return;clearTimeout(root._st);root._st=setTimeout(()=>{sync();const b=$("#simbox");if(b)b.outerHTML=simHtml(d)},250)};
   root.onsubmit=async e=>{
     e.preventDefault();sync();if(!d.name.trim()){toast("なまえを入れてね");return}
     const btn=$("#save");btn.disabled=true;btn.textContent="保存中…";
@@ -663,7 +711,7 @@ function openSheet(it){
         else{d.photoData=pending.data}
       }
       if(d.shown==="display"&&(!it||it.shown!=="display"))d.dispAt=Date.now();
-      await saveItem(d);root.innerHTML="";toast(isNew?`No.${pad(d.no)} として登録しました`:"保存しました");
+      await saveItem(d);root.innerHTML="";toast(d.wish?(isNew?"ほしいものリストに追加しました":"保存しました"):isNew?`No.${pad(d.no)} として登録しました`:"保存しました");
     }catch(err){btn.disabled=false;btn.textContent="もう一度保存";toast(err&&err.code==="quota_exceeded"?"写真の容量がいっぱいです。写真なしで保存してみてね":"保存できませんでした。もう一度ためしてね")}
   };
   setTimeout(()=>{const n=$("#f-name");if(n&&isNew)n.focus()},50);
@@ -696,9 +744,12 @@ $("#emptyBox").onclick=e=>{if(e.target.closest("[data-addhere]"))openSheet(null)
 $("#shownf").onclick=e=>{const b=e.target.closest("[data-s]");if(b){state.filter.shown=b.dataset.s;render()}};
 $("#q").oninput=e=>{state.filter.q=e.target.value;render()};
 $("#sortby").onchange=e=>{state.sort=e.target.value;render()};
-function setTab(t){state.tab=t;["zukan","sort","album"].forEach(k=>{$("#tab-"+k).setAttribute("aria-pressed",t===k);$("#view-"+k).hidden=t!==k});
-  $("#add").hidden=t!=="zukan";if(t==="sort"){state.sortQueue=null;renderSort()}if(t==="album")renderAlbum()}
-$("#tab-zukan").onclick=()=>setTab("zukan");$("#tab-sort").onclick=()=>setTab("sort");$("#tab-album").onclick=()=>setTab("album");
+function setTab(t){state.tab=t;["zukan","sort","album","wish"].forEach(k=>{$("#tab-"+k).setAttribute("aria-pressed",t===k);$("#view-"+k).hidden=t!==k});
+  $("#add").hidden=t!=="zukan";if(t==="sort"){state.sortQueue=null;renderSort()}if(t==="album")renderAlbum();if(t==="wish")renderWish()}
+$("#tab-zukan").onclick=()=>setTab("zukan");$("#tab-sort").onclick=()=>setTab("sort");$("#tab-album").onclick=()=>setTab("album");$("#tab-wish").onclick=()=>setTab("wish");
+$("#wishAdd").onclick=()=>openSheet(null,{wish:true});
+$("#wishList").onclick=e=>{const g=e.target.closest("[data-got]");if(g){const w=state.items.find(i=>i.id===g.dataset.got);if(w)gotIt(w);return}
+  const o=e.target.closest("[data-wid]");if(o)openSheet(state.items.find(i=>i.id===o.dataset.wid))};
 boot();
 </script>
 
