@@ -228,7 +228,9 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
 .form{display:grid;gap:12px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .field label,.field .lab{display:block;font-size:12.5px;color:var(--ink-soft);margin-bottom:3px;letter-spacing:.03em}
-.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px;min-width:0}
+.field input,.field select,.field textarea{width:100%;max-width:100%;display:block;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:9px 10px;min-width:0}
+.field input[type="month"]{-webkit-appearance:none;appearance:none;min-height:42px;text-align:left}
+.row2>.field{min-width:0}
 .field textarea{min-height:70px;resize:vertical}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
 .seg button{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:5px 12px;font-size:13.5px}
@@ -239,7 +241,7 @@ select.sort{border:1px solid var(--line);background:var(--paper);border-radius:9
 .hearts button{border:0;background:none;font-size:24px;padding:0 2px;color:var(--line)}
 .hearts button.on{color:var(--red)}
 .photo{display:flex;gap:12px;align-items:center}
-.photo .pv{width:84px;height:84px;flex:none;border-radius:8px;border:1px dashed var(--line);background:var(--bg);overflow:hidden;display:grid;place-items:center;color:var(--ink-soft);font-size:12px;text-align:center}
+.photo .pv{width:92px;height:88px;flex:none;border-radius:10px;border:3px double var(--g2);background:var(--bg);overflow:hidden;display:grid;place-items:center;color:var(--ink-soft);font-size:12px;text-align:center}
 .photo .pv img{width:100%;height:100%;object-fit:cover}
 .photo label.btn{border:1px solid var(--brown);color:var(--brown);border-radius:999px;padding:6px 14px;font-size:13.5px;cursor:pointer;display:inline-block}
 .photo input{position:absolute;width:1px;height:1px;opacity:0}
@@ -361,6 +363,18 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 .tp-foot{display:flex;justify-content:space-between;gap:8px}
 .tp-foot button{border:0;background:none;font-family:var(--f-display);font-size:12.5px;color:var(--brown);text-decoration:underline;padding:2px}
 .page-head{align-items:center}
+.btn-trim{border:1px solid var(--g2);background:var(--paper);color:#b08a43;border-radius:999px;padding:5px 14px;font-family:var(--f-display);font-size:13px}
+.crop-ov{position:fixed;inset:0;z-index:60;background:rgba(20,12,8,.82);display:grid;place-items:center;padding:16px max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px))}
+.crop-box{width:min(440px,100%);display:grid;gap:14px}
+.crop-t{margin:0;text-align:center;color:#f3e7d7;font-family:var(--f-display);font-size:13.5px}
+.crop-stage{position:relative;width:100%;aspect-ratio:541/515;overflow:hidden;border-radius:6px;background:#000;touch-action:none;cursor:grab;box-shadow:0 0 0 4px #c9a55a,0 0 0 6px #7a5a24}
+.crop-stage img{position:absolute;left:50%;top:50%;max-width:none;user-select:none;-webkit-user-select:none;pointer-events:none}
+.crop-mask{position:absolute;inset:0;pointer-events:none;background:linear-gradient(rgba(255,255,255,.25),rgba(255,255,255,.25)) 33.33% 0/1px 100% no-repeat,linear-gradient(rgba(255,255,255,.25),rgba(255,255,255,.25)) 66.66% 0/1px 100% no-repeat,linear-gradient(rgba(255,255,255,.25),rgba(255,255,255,.25)) 0 33.33%/100% 1px no-repeat,linear-gradient(rgba(255,255,255,.25),rgba(255,255,255,.25)) 0 66.66%/100% 1px no-repeat}
+.crop-zoom{display:flex;align-items:center;gap:10px;color:#f3e7d7;font-size:12px}
+.crop-zoom input{flex:1;accent-color:#c9a55a}
+.crop-btns{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap}
+.crop-btns button{border:1px solid #c9a55a;background:transparent;color:#f3e7d7;border-radius:999px;padding:9px 14px;font-family:var(--f-display);font-size:13px}
+.crop-btns .btn-main{background:var(--goldplate);color:#3d2a0e;border-color:#7a5a24}
 </style>
 
 <div class="wrap">
@@ -546,6 +560,46 @@ function shrink(file,max=1000){return new Promise((res,rej)=>{
     URL.revokeObjectURL(url);cv.toBlob(b=>b?res({blob:b,data:cv.toDataURL("image/jpeg",.7)}):rej(),"image/jpeg",.82)};
   im.onerror=()=>{URL.revokeObjectURL(url);rej()};im.src=url})}
 
+/* ---------- 写真のトリミング ---------- */
+const CROP_AR=541/515; /* 額縁の窓の形 */
+function dataToBlob(u){const [h,b]=u.split(",");const bin=atob(b);const a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return new Blob([a],{type:(h.match(/:(.*?);/)||[])[1]||"image/jpeg"})}
+function cropPhoto(src){return new Promise(resolve=>{
+  const im=new Image();im.crossOrigin="anonymous";
+  im.onerror=()=>{toast("この写真はトリミングできませんでした");resolve(null)};
+  im.onload=()=>{
+    const ov=document.createElement("div");ov.className="crop-ov";
+    ov.innerHTML=`<div class="crop-box" role="dialog" aria-modal="true" aria-label="写真のトリミング">
+      <p class="crop-t">指で動かして、額縁に入れたいところを合わせてね</p>
+      <div class="crop-stage" id="cropStage"><img alt="" draggable="false"><div class="crop-mask"></div></div>
+      <div class="crop-zoom"><span>小</span><input type="range" id="cropZ" min="1" max="4" step="0.01" value="1" aria-label="大きさ"><span>大</span></div>
+      <div class="crop-btns"><button id="cropRot" type="button">↻ 回転</button><button id="cropNo" type="button">そのまま使う</button><button id="cropOk" type="button" class="btn-main">これでOK</button></div></div>`;
+    document.body.appendChild(ov);
+    const st=ov.querySelector("#cropStage"),img=st.querySelector("img"),zr=ov.querySelector("#cropZ");img.src=src;
+    let rot=0,zoom=1,x=0,y=0;
+    const dims=()=>{const W=st.clientWidth,H=st.clientHeight,r=rot%180!==0,w=r?im.naturalHeight:im.naturalWidth,h=r?im.naturalWidth:im.naturalHeight;return {W,H,w,h,base:Math.max(W/w,H/h)}};
+    const clamp=()=>{const {W,H,w,h,base}=dims(),s=base*zoom,mx=Math.max(0,(w*s-W)/2),my=Math.max(0,(h*s-H)/2);x=Math.min(mx,Math.max(-mx,x));y=Math.min(my,Math.max(-my,y))};
+    const paint=()=>{clamp();const {W,H,base}=dims(),s=base*zoom;img.style.width=im.naturalWidth*s+"px";img.style.height=im.naturalHeight*s+"px";
+      img.style.transform=`translate(-50%,-50%) translate(${x}px,${y}px) rotate(${rot}deg)`};
+    requestAnimationFrame(paint);
+    const pts=new Map();let last=null,pinch=null;
+    st.addEventListener("pointerdown",e=>{st.setPointerCapture(e.pointerId);pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pts.size===2){const [a,b]=[...pts.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),z:zoom}}else last={x:e.clientX,y:e.clientY}});
+    st.addEventListener("pointermove",e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(pts.size===2&&pinch){const [a,b]=[...pts.values()];zoom=Math.min(4,Math.max(1,pinch.z*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d));zr.value=zoom;paint()}
+      else if(last){x+=e.clientX-last.x;y+=e.clientY-last.y;last={x:e.clientX,y:e.clientY};paint()}});
+    const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;if(pts.size===1){const v=[...pts.values()][0];last={x:v.x,y:v.y}}else last=null};
+    st.addEventListener("pointerup",up);st.addEventListener("pointercancel",up);
+    zr.oninput=()=>{zoom=+zr.value;paint()};
+    const done=v=>{ov.remove();resolve(v)};
+    ov.querySelector("#cropRot").onclick=()=>{rot=(rot+90)%360;x=0;y=0;paint()};
+    ov.querySelector("#cropNo").onclick=()=>done(null);
+    ov.querySelector("#cropOk").onclick=()=>{const {W,H,base}=dims(),s=base*zoom,OW=1000,OH=Math.round(OW*H/W),k=OW/W;
+      const cv=document.createElement("canvas");cv.width=OW;cv.height=OH;const c=cv.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,OW,OH);
+      c.translate(OW/2+x*k,OH/2+y*k);c.rotate(rot*Math.PI/180);const dw=im.naturalWidth*s*k,dh=im.naturalHeight*s*k;c.drawImage(im,-dw/2,-dh/2,dw,dh);
+      try{cv.toBlob(b=>done(b?{blob:b,data:cv.toDataURL("image/jpeg",.8)}:null),"image/jpeg",.85)}catch(err){toast("この写真はトリミングできませんでした");done(null)}};
+  };
+  im.src=src})}
+
 /* ---------- 描画 ---------- */
 function gframe(it,src,lazy){return `<div class="gf"><div class="pic">${src?`<img src="${esc(src)}" alt=""${lazy?' loading="lazy"':""}>`:esc((it.name||"？").slice(0,1))}</div><img class="frm" src="frame-square.webp" alt=""></div>`}
 function filtered(){
@@ -711,8 +765,8 @@ function openSheet(it,opt={}){
       <h2 id="sh-t"><span>${d.wish?(isNew?"ほしいものを追加":"ほしいものを編集"):isNew?"図鑑に登録":"No."+pad(d.no)+" を編集"}</span><button class="x" id="sh-x" aria-label="閉じる">×</button></h2>
       <form class="form" id="f">
         <div class="photo"><div class="pv">${src?`<img src="${esc(src)}" alt="">`:"写真<br>なし"}</div>
-          <div><label class="btn" for="f-photo">${src?"写真を変える":"写真をえらぶ"}</label><input id="f-photo" type="file" accept="image/*">
-          <div style="font-size:12px;color:var(--ink-soft);margin-top:4px">その場で撮影もできます</div></div></div>
+          <div style="display:grid;gap:6px;justify-items:start"><label class="btn" for="f-photo">${src?"写真を変える":"写真をえらぶ"}</label><input id="f-photo" type="file" accept="image/*">
+          ${src?`<button type="button" class="btn-trim" id="trim">✂ トリミング</button>`:`<div style="font-size:12px;color:var(--ink-soft)">その場で撮影もできます</div>`}</div></div>
         <div class="field"><label for="f-name">なまえ</label><input id="f-name" required maxlength="60" value="${esc(d.name)}" placeholder="例）一期一振のぬい（白）"></div>
         <div class="row2">
           <div class="field"><label for="f-cat">カテゴリ</label><select id="f-cat">${CATS.map(c=>`<option ${c===d.cat?"selected":""}>${c}</option>`).join("")}</select></div>
@@ -742,6 +796,7 @@ function openSheet(it,opt={}){
     const h=e.target.closest(".hearts button");if(h){sync();const n=+h.dataset.n;d.love=d.love===n?0:n;draw();return}
     if(e.target.id==="del"){$("#cf").innerHTML=`<div class="confirm"><span>「${esc(d.name)}」を図鑑から消しますか？</span><span><button type="button" class="no" id="cf-no">やめる</button> <button type="button" class="yes" id="cf-yes">消す</button></span></div>`;return}
     if(e.target.id==="cf-no"){$("#cf").innerHTML="";return}
+    if(e.target.id==="trim"){sync();const src=pending?pending.data:imgSrc(d);if(!src)return;const c=await cropPhoto(src);if(c){pending=c;draw()}return}
     if(e.target.id==="gotit"){sync();root.innerHTML="";await gotIt(d);return}
     if(e.target.id==="grad"){sync();root.innerHTML="";await graduate(d);return}
     if(e.target.id==="ungrad"){sync();root.innerHTML="";try{const {grad,gradAt,...rest}=d;await saveItem(rest);toast("図鑑にもどしました")}catch(err){toast("保存できませんでした")}return}
@@ -749,7 +804,8 @@ function openSheet(it,opt={}){
   };
   root.onchange=async e=>{
     if(e.target.id!=="f-photo"||!e.target.files[0])return;sync();
-    try{pending=await shrink(e.target.files[0]);draw()}catch(err){toast("この写真は読みこめませんでした")}
+    let base;try{base=await shrink(e.target.files[0],1600)}catch(err){toast("この写真は読みこめませんでした");return}
+    e.target.value="";const c=await cropPhoto(base.data);pending=c||base;draw()
   };
   root.oninput=e=>{if(!d.wish||!["f-name","f-series","f-cat"].includes(e.target.id))return;clearTimeout(root._st);root._st=setTimeout(()=>{sync();const b=$("#simbox");if(b)b.outerHTML=simHtml(d)},250)};
   root.onsubmit=async e=>{
