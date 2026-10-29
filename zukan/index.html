@@ -324,7 +324,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 .toolrow button[aria-pressed="true"]{border-color:var(--brown);background:var(--bg);color:var(--ink);box-shadow:inset 0 0 0 1px var(--brown)}
 .toolpanel{position:relative;z-index:1;margin-top:8px;background:var(--bg);border:1px dashed var(--line);border-radius:12px;padding:10px}
 .toolpanel .search,.toolpanel .sort{width:100%}
-.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:25;display:grid;grid-template-columns:repeat(5,1fr);gap:4px;background:var(--paper);border-top:1px solid var(--line);padding:8px max(10px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));box-shadow:0 -4px 16px rgba(59,42,34,.08)}
+.bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:25;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;background:var(--paper);border-top:1px solid var(--line);padding:8px max(10px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(10px,env(safe-area-inset-left,0px));box-shadow:0 -4px 16px rgba(59,42,34,.08)}
 .bottomnav button{border:1px solid var(--line);background:var(--paper);border-radius:14px;padding:5px 1px 4px;font-family:var(--f-display);font-size:11px;color:var(--ink-soft);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;min-width:0;white-space:nowrap}
 .bottomnav button i{font-style:normal;color:#b08a43;font-size:16px;line-height:1.2}
 .bottomnav button[aria-pressed="true"]{background:var(--brown);border-color:var(--brown);color:var(--paper)}
@@ -385,6 +385,28 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
 .dt-list:empty{display:none}
 .dt-list dt{color:var(--ink-soft);font-size:12.5px;padding-top:1px}
 .dt-list dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.sort-sum{margin:18px auto 0;max-width:460px}
+.sum-hint{margin:0;text-align:center;font-size:11.5px;color:var(--ink-soft)}
+.kiroku{max-width:560px;margin:14px auto 0;display:grid;gap:14px}
+.kr-total{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kr-total div{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:10px 4px;text-align:center}
+.kr-total b{display:block;font-family:var(--f-num);font-size:26px;font-weight:500;color:var(--brown);line-height:1.2}
+.kr-total span{font-size:11.5px;color:var(--ink-soft)}
+.kr-card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.kr-card h3{margin:0 0 8px;font-family:var(--f-display);font-weight:500;font-size:14px;color:var(--brown)}
+.kr-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.kr-list li{display:grid;grid-template-columns:5em 1fr 2em;gap:8px;align-items:center;font-size:13px}
+.kr-list i{display:block;height:10px;border-radius:999px;background:var(--bg);overflow:hidden}
+.kr-list i b{display:block;height:100%;background:var(--goldplate);border-radius:999px}
+.kr-list em{font-style:normal;text-align:right;font-family:var(--f-num);color:var(--brown)}
+.kr-recent{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.kr-recent li{display:grid;grid-template-columns:48px 1fr;gap:10px;align-items:center;cursor:pointer}
+.kr-recent .th{width:48px;height:48px;border-radius:8px;overflow:hidden;border:2px solid var(--g2);display:grid;place-items:center;background:var(--bg);font-family:var(--f-display);color:var(--ink-soft)}
+.kr-recent .th img{width:100%;height:100%;object-fit:cover}
+.kr-recent .nm{min-width:0}.kr-recent .nm b{display:block;font-weight:500;font-family:var(--f-display);font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kr-recent .nm small{color:var(--ink-soft);font-size:11.5px}
+.kr-list .none,.kr-recent .none{display:block;color:var(--ink-soft);font-size:12.5px;cursor:default}
+.bottomnav button{font-size:10.5px}
 </style>
 
 <div class="wrap">
@@ -416,12 +438,11 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
     <div id="emptyBox"></div>
     <div class="pager"><button id="prevPg"></button><button id="nextPg"></button></div>
     </div>
-    <section class="arrivals" aria-labelledby="arrT"><h2 id="arrT">お迎えのきろく</h2><div class="arr-card" id="arr"></div></section>
-    <section class="summary" aria-labelledby="sumT"><h2 id="sumT">仕分けのようす</h2><div class="bar" id="bar"></div><div class="tally" id="tally"></div></section>
     <p class="status" id="status">読みこみ中…</p>
   </section>
 
   <section id="view-sort" hidden>
+    <section class="summary sort-sum" aria-labelledby="sumT"><h2 id="sumT">仕分けのようす</h2><div class="bar" id="bar"></div><div class="tally" id="tally"></div><p class="sum-hint">数字をタップすると、図鑑でその子たちだけ見られるよ</p></section>
     <div class="sort-wrap" id="sortBox"></div>
   </section>
 
@@ -437,6 +458,16 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
     <div id="kzBox"></div>
   </section>
 
+  <section id="view-kiroku" hidden>
+    <div class="album-head"><h2>お迎えのきろく</h2><p>いつ、どんな子をお迎えしたかのふりかえり</p></div>
+    <div class="kiroku">
+      <div class="arr-card" id="arr"></div>
+      <div class="kr-total" id="krTotal"></div>
+      <div class="kr-card"><h3>しゅるい別</h3><ul class="kr-list" id="krCat"></ul></div>
+      <div class="kr-card"><h3>最近お迎えした子</h3><ul class="kr-recent" id="krRecent"></ul></div>
+    </div>
+  </section>
+
   <section id="view-album" hidden>
     <div class="album-head"><h2>卒業アルバム</h2><p>手放した子たちの思い出。写真は残るから安心してね</p></div>
     <div class="grid c3 album" id="albumGrid"></div>
@@ -450,6 +481,7 @@ html,body{overflow-x:hidden;overscroll-behavior-x:none}
   <button id="tab-sort" aria-pressed="false"><i aria-hidden="true">⚖</i>仕分け</button>
   <button id="tab-album" aria-pressed="false"><i aria-hidden="true">❀</i>アルバム</button>
   <button id="tab-wish" aria-pressed="false"><i aria-hidden="true">♡</i>ほしい</button>
+  <button id="tab-kiroku" aria-pressed="false"><i aria-hidden="true">✦</i>きろく</button>
   <button id="tab-kisekae" aria-pressed="false"><i aria-hidden="true">✿</i>きせかえ</button>
 </nav>
 <div id="sheetRoot"></div>
@@ -696,7 +728,14 @@ function renderArrivals(){const now=new Date(),ms=[];
   for(let k=5;k>=0;k--){const d=new Date(now.getFullYear(),now.getMonth()-k,1);ms.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
   const cnt=m=>state.items.filter(i=>monthOf(i)===m).length,vals=ms.map(cnt),mx=Math.max(1,...vals),cur=vals[5],prev=vals[4];
   $("#arr").innerHTML=`<div class="arr-now"><small>今月のお迎え</small><b>${cur}</b><span>こ</span><small>${cur>prev?`先月より${cur-prev}こ多め`:cur<prev?`先月より${prev-cur}こ少なめ`:"先月とおなじ"}</small></div>
-    <div class="arr-bars">${ms.map((m,i)=>`<div class="${i===5?"now":""}"><span>${vals[i]||""}</span><i style="height:${vals[i]/mx*60}px"></i><em>${+m.slice(5)}月</em></div>`).join("")}</div>`}
+    <div class="arr-bars">${ms.map((m,i)=>`<div class="${i===5?"now":""}"><span>${vals[i]||""}</span><i style="height:${vals[i]/mx*60}px"></i><em>${+m.slice(5)}月</em></div>`).join("")}</div>`;
+  if(state.tab!=="kiroku")return;
+  const all=state.items.filter(i=>!i.wish),lv=live(),gr=all.filter(i=>i.grad).length,y=String(now.getFullYear()),yc=all.filter(i=>monthOf(i).startsWith(y)).length;
+  $("#krTotal").innerHTML=[["図鑑にいる子",lv.length],[`${y}年のお迎え`,yc],["卒業した子",gr]].map(([l,n])=>`<div><b>${n}</b><span>${l}</span></div>`).join("");
+  const cats=CATS.map(c=>[c,lv.filter(i=>i.cat===c).length]).filter(x=>x[1]).sort((a,b)=>b[1]-a[1]),cm=Math.max(1,...cats.map(x=>x[1]));
+  $("#krCat").innerHTML=cats.map(([c,n])=>`<li><span>${esc(LABEL(c))}</span><i><b style="width:${n/cm*100}%"></b></i><em>${n}</em></li>`).join("")||`<li class="none">まだ登録がないよ</li>`;
+  const rec=all.slice().sort((a,b)=>(monthOf(b)||"").localeCompare(monthOf(a)||"")||(b.created||0)-(a.created||0)).slice(0,6);
+  $("#krRecent").innerHTML=rec.map(i=>`<li data-id="${esc(i.id)}"><span class="th">${thumb(i)}</span><span class="nm"><b>${esc(i.name)}</b><small>${esc(monthOf(i).replace(/^(\d+)-0?(\d+)$/,"$1年$2月"))}${i.grad?"・卒業":""}</small></span></li>`).join("")||`<li class="none">まだ登録がないよ</li>`}
 
 /* ---------- ほしいものリスト ---------- */
 function simHtml(d){const sm=similar(d);return `<div class="simbox ${sm.length?"":"zero"}" id="simbox"><p>${sm.length?`似てるかも：もう持ってる子が ${sm.length}こ`:d.name||d.series?"似たものは図鑑にないよ":"なまえや推しを入れると、図鑑と見くらべるよ"}</p>${sm.length?`<ul>${sm.map(i=>`<li><span>${thumb(i)}</span>${esc(i.name)}</li>`).join("")}</ul>`:""}</div>`}
@@ -858,7 +897,8 @@ $("#tpClose").onclick=()=>toggleTools(false);
 $("#sizes2").onclick=e=>{const b=e.target.closest("[data-cols]");if(b){setLook({cols:+b.dataset.cols});render()}};
 $("#tpReset").onclick=()=>{state.filter.q="";state.filter.shown="all";state.sort="no";$("#q").value="";$("#sortby").value="no";render()};
 $("#grid").onclick=e=>{const p=e.target.closest(".plate");if(p)openDetail(state.items.find(i=>i.id===p.dataset.id))};
-$("#tally").onclick=e=>{const b=e.target.closest("[data-j]");if(b){state.filter.judge=b.dataset.j;render();$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}};
+$("#tally").onclick=e=>{const b=e.target.closest("[data-j]");if(b){state.filter.judge=b.dataset.j;setTab("zukan");render();$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}};
+$("#krRecent").onclick=e=>{const l=e.target.closest("[data-id]");if(l)openDetail(state.items.find(i=>i.id===l.dataset.id))};
 function goPage(c){setKey(c);render();$("#cats").scrollIntoView({block:"start",behavior:"smooth"})}
 $("#cats").onclick=e=>{const b=e.target.closest("[data-c]");if(b){setKey(b.dataset.c);render()}};
 $("#pmode").onclick=e=>{const b=e.target.closest("[data-m]");if(b&&b.dataset.m!==state.pmode){state.pmode=b.dataset.m;render()}};
@@ -871,9 +911,9 @@ $("#emptyBox").onclick=e=>{if(e.target.closest("[data-addhere]"))openSheet(null)
 $("#shownf").onclick=e=>{const b=e.target.closest("[data-s]");if(b){state.filter.shown=b.dataset.s;render()}};
 $("#q").oninput=e=>{state.filter.q=e.target.value;render()};
 $("#sortby").onchange=e=>{state.sort=e.target.value;render()};
-function setTab(t){state.tab=t;["zukan","sort","album","wish","kisekae"].forEach(k=>{$("#tab-"+k).setAttribute("aria-pressed",t===k);$("#view-"+k).hidden=t!==k});
-  $("#add").hidden=t!=="zukan";if(t==="sort"){state.sortQueue=null;renderSort()}if(t==="album")renderAlbum();if(t==="wish")renderWish();if(t==="kisekae")openKisekae()}
-$("#tab-zukan").onclick=()=>setTab("zukan");$("#tab-sort").onclick=()=>setTab("sort");$("#tab-album").onclick=()=>setTab("album");$("#tab-wish").onclick=()=>setTab("wish");$("#tab-kisekae").onclick=()=>setTab("kisekae");
+function setTab(t){state.tab=t;["zukan","sort","album","wish","kiroku","kisekae"].forEach(k=>{$("#tab-"+k).setAttribute("aria-pressed",t===k);$("#view-"+k).hidden=t!==k});
+  $("#add").hidden=t!=="zukan";if(t==="sort"){state.sortQueue=null;renderSort()}if(t==="album")renderAlbum();if(t==="wish")renderWish();if(t==="kisekae")openKisekae();if(t==="kiroku")renderArrivals();window.scrollTo(0,0)}
+$("#tab-zukan").onclick=()=>setTab("zukan");$("#tab-sort").onclick=()=>setTab("sort");$("#tab-album").onclick=()=>setTab("album");$("#tab-wish").onclick=()=>setTab("wish");$("#tab-kiroku").onclick=()=>setTab("kiroku");$("#tab-kisekae").onclick=()=>setTab("kisekae");
 $("#wishAdd").onclick=()=>openSheet(null,{wish:true});
 $("#wishList").onclick=e=>{const g=e.target.closest("[data-got]");if(g){const w=state.items.find(i=>i.id===g.dataset.got);if(w)gotIt(w);return}
   const o=e.target.closest("[data-wid]");if(o)openSheet(state.items.find(i=>i.id===o.dataset.wid))};
