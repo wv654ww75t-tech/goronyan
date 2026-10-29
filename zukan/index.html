@@ -648,7 +648,7 @@ function render(){
     return `<button class="plate" data-id="${esc(it.id)}">
       ${gframe(it,src,true)}
       <div class="nameplate"><small>No.${pad(it.no)}</small><b>${esc(it.name)}</b></div>
-      <div class="sub"><span class="pill ${j}">${JUDGE[j]}</span></div>
+      ${j==="maybe"||j==="let"?`<div class="sub"><span class="pill ${j}">${JUDGE[j]}</span></div>`:""}
     </button>`}).join("");
   const eb=$("#emptyBox");
   if(!state.loaded){eb.innerHTML=""}
