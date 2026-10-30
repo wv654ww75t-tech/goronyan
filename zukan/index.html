@@ -419,6 +419,20 @@ html[data-font] body{font-family:var(--f-body)}
 .ft b{font-weight:400;font-size:17px;line-height:1.3}
 .ft small{font-size:11.5px;color:var(--ink-soft)}
 .ft[aria-pressed="true"]{border-color:var(--brown);box-shadow:inset 0 0 0 1.5px var(--brown)}
+html[data-paper="cream"] .page,.paper-cream{background:color-mix(in srgb,var(--paper) 78%,#f1d9a4)}
+html[data-paper="pink"] .page,.paper-pink{background:color-mix(in srgb,var(--paper) 80%,#f4bccb)}
+html[data-paper="sky"] .page,.paper-sky{background:color-mix(in srgb,var(--paper) 78%,#b4d8e8)}
+html[data-paper="lav"] .page,.paper-lav{background:color-mix(in srgb,var(--paper) 78%,#cfc0ec)}
+html[data-paper="antique"] .page,.paper-antique{background:radial-gradient(ellipse at 50% 40%,transparent 45%,rgba(122,90,36,.20) 100%),radial-gradient(circle at 20% 15%,rgba(122,90,36,.07) 0 6%,transparent 7%),radial-gradient(circle at 80% 70%,rgba(122,90,36,.06) 0 8%,transparent 9%),color-mix(in srgb,var(--paper) 62%,#e2c792)}
+html[data-paper="grid"] .page,.paper-grid{background:linear-gradient(var(--pat) 1px,transparent 1px) 0 0/18px 18px,linear-gradient(90deg,var(--pat) 1px,transparent 1px) 0 0/18px 18px,var(--paper)}
+html[data-paper="lined"] .page,.paper-lined{background:repeating-linear-gradient(transparent 0 25px,color-mix(in srgb,var(--sky-ink) 22%,transparent) 25px 26px),var(--paper)}
+html[data-paper="dots"] .page,.paper-dots{background:radial-gradient(color-mix(in srgb,var(--red) 22%,transparent) 2px,transparent 2.5px) 0 0/22px 22px,radial-gradient(color-mix(in srgb,var(--red) 22%,transparent) 2px,transparent 2.5px) 11px 11px/22px 22px,var(--paper)}
+html[data-paper="flower"] .page,.paper-flower{background:radial-gradient(circle at 50% 50%,color-mix(in srgb,#e8a3b4 70%,transparent) 2.2px,transparent 2.6px) 0 0/34px 34px,radial-gradient(circle at 50% 50%,color-mix(in srgb,#e8a3b4 45%,transparent) 5px,transparent 5.4px) 0 0/34px 34px,radial-gradient(circle at 50% 50%,color-mix(in srgb,#9cc3a6 55%,transparent) 1.6px,transparent 2px) 17px 17px/34px 34px,color-mix(in srgb,var(--paper) 90%,#f4bccb)}
+.paper-plain{background:var(--paper)}
+.papers{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.pp{border:1px solid var(--line);background:var(--paper);border-radius:12px;padding:6px;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;color:var(--ink)}
+.pp .sheet-s{display:block;width:100%;height:46px;border-radius:4px 10px 10px 10px;border:1.5px solid var(--g2)}
+.pp[aria-pressed="true"]{border-color:var(--brown);box-shadow:inset 0 0 0 1.5px var(--brown)}
 </style>
 
 <div class="wrap">
@@ -500,9 +514,9 @@ html[data-font] body{font-family:var(--f-body)}
 <div id="toastRoot"></div>
 
 <script>
-const PAGES=["all","ぬい","推しグッズ","文房具","コスメ","服・小物","本・CD","インテリア雑貨","キッチン","その他"];
+const PAGES=["all","ぬい","推しグッズ","ガチャ","文房具","コスメ","服・小物","本・CD","インテリア雑貨","キッチン","その他"];
 const LABEL=c=>({all:"ぜんぶ","推しグッズ":"グッズ","インテリア雑貨":"雑貨"})[c]||c;
-const CATS=["ぬい","推しグッズ","文房具","コスメ","服・小物","本・CD","インテリア雑貨","キッチン","その他"];
+const CATS=["ぬい","推しグッズ","ガチャ","文房具","コスメ","服・小物","本・CD","インテリア雑貨","キッチン","その他"];
 const JUDGE={none:"未判定",keep:"いる",maybe:"まよい中",let:"いらない"};
 const SHOWN={display:"飾ってる",stored:"しまってる",use:"ふだん使い"};
 const state={pmode:"cat",items:[],filter:{cat:"all",place:"all",judge:"all",shown:"all",q:""},sort:"no",tab:"zukan",mode:"loading",db:null,col:null,assets:null,sortQueue:null};
@@ -524,6 +538,7 @@ const imgSrc=it=>it.photo?("/_blob/"+it.photo):(it.photoData||"");
 /* ---------- きせかえ ---------- */
 const SKINS=[["auto","端末に合わせる","linear-gradient(135deg,#f8f3ea 50%,#211813 50%)","夜は暗くなる"],["ivory","アイボリー","#f8f3ea"],["sora","そら","#e6f1f7"],["sakura","さくら","#fbecef"],["lavender","ラベンダー","#f0ebf8"],["classic","クラシック","#ede0cd"],["choco","ショコラ","#2b1d16"]];
 const FONTS=[["maru","まるもじ","Kiwi Maru"],["klee","てがき","Klee One"],["pop","ぽっぷ","Hachi Maru Pop"],["mincho","クラシック","Zen Old Mincho"],["yomogi","ゆるふわ","Yomogi"],["round","すっきり","M PLUS Rounded 1c"]];
+const PAPERS=[["plain","しろ"],["cream","クリーム"],["pink","ピンク"],["sky","みずいろ"],["lav","ラベンダー"],["antique","古い紙"],["grid","方眼"],["lined","罫線"],["dots","水玉"],["flower","小花"]];
 const PATS=[["none","むじ"],["dots","水玉"],["gingham","ギンガム"],["quilt","キルティング"],["stripe","ストライプ"],["lace","レース"]];
 const SKEY="ouchi-zukan-look";
 let look={skin:"ivory",pat:"none",cols:2};
@@ -531,13 +546,15 @@ try{const v=JSON.parse(localStorage.getItem(SKEY)||"null");if(v)look=v}catch(e){
 function applyLook(){const r=document.documentElement;
   if(look.skin==="auto")r.removeAttribute("data-skin");else r.setAttribute("data-skin",look.skin);
   if(look.pat==="none")r.removeAttribute("data-pat");else r.setAttribute("data-pat",look.pat);
-  if(!look.font||look.font==="maru")r.removeAttribute("data-font");else r.setAttribute("data-font",look.font)}
+  if(!look.font||look.font==="maru")r.removeAttribute("data-font");else r.setAttribute("data-font",look.font);
+  if(!look.paper||look.paper==="plain")r.removeAttribute("data-paper");else r.setAttribute("data-paper",look.paper)}
 applyLook();
 async function setLook(p){look={...look,...p};applyLook();try{localStorage.setItem(SKEY,JSON.stringify(look))}catch(e){}
-  if(state.lookDoc){try{await state.lookDoc.set({skin:look.skin,pat:look.pat,cols:look.cols||2,limits:look.limits||{},font:look.font||"maru"})}catch(e){}}}
+  if(state.lookDoc){try{await state.lookDoc.set({skin:look.skin,pat:look.pat,cols:look.cols||2,limits:look.limits||{},font:look.font||"maru",paper:look.paper||"plain"})}catch(e){}}}
 function openKisekae(){const root=$("#kzBox");
   const draw=()=>{root.innerHTML=`<div class="kz-page">
     <div class="kz-sec"><h3>いろ</h3><div class="swatches">${SKINS.map(([k,l,c,sub])=>`<button class="sw" data-skin="${k}" aria-pressed="${look.skin===k}"><span class="dot" style="background:${c}"></span>${l}${sub?`<small style="color:var(--ink-soft);font-size:10.5px;margin-top:-4px">${sub}</small>`:""}</button>`).join("")}</div></div>
+    <div class="kz-sec"><h3>図鑑のページの紙</h3><div class="papers">${PAPERS.map(([k,l])=>`<button class="pp" data-paper="${k}" aria-pressed="${(look.paper||"plain")===k}"><span class="sheet-s paper-${k}"></span>${l}</button>`).join("")}</div></div>
     <div class="kz-sec"><h3>もじ</h3><div class="fonts">${FONTS.map(([k,l,f])=>`<button class="ft" data-font="${k}" aria-pressed="${(look.font||"maru")===k}" style="font-family:'${f}',var(--f-body)"><b>おうち図鑑</b><small>${l}</small></button>`).join("")}</div></div>
     <div class="kz-sec"><h3>がら</h3><div class="pats">${PATS.map(([k,l])=>`<button class="pt" data-pat="${k}" aria-pressed="${look.pat===k}"><span class="tile ${k}"></span>${l}</button>`).join("")}</div></div>
     ${state.mode==="local"?`<div class="kz-sec"><h3>バックアップ（写真ごと保存できます）</h3><div class="backup"><button id="bk-out">ファイルに書き出す</button><label for="bk-in">ファイルから読みこむ</label><input id="bk-in" type="file" accept=".json,application/json"></div><small style="color:var(--ink-soft);font-size:11.5px">機種変更やデータの引っこしのときに使ってね。読みこむと、今ある図鑑に足されます</small></div>`:""}
@@ -556,7 +573,8 @@ function openKisekae(){const root=$("#kzBox");
       const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);return}
     const s=e.target.closest("[data-skin]");if(s&&s.classList.contains("sw")){setLook({skin:s.dataset.skin});draw();return}
     const p=e.target.closest(".pt");if(p){setLook({pat:p.dataset.pat});draw();return}
-    const fb=e.target.closest(".ft");if(fb){setLook({font:fb.dataset.font});draw()}
+    const fb=e.target.closest(".ft");if(fb){setLook({font:fb.dataset.font});draw();return}
+    const pb=e.target.closest(".pp");if(pb){setLook({paper:pb.dataset.paper});draw()}
   };
 }
 
@@ -583,7 +601,7 @@ async function boot(){
     state.db=db;state.mode="db";
     state.col=db.collection("data/users/"+uid+"/zukan/items");
     state.lookDoc=db.doc("data/users/"+uid+"/zukan");
-    state.lookDoc.get().then(s=>{const v=s.exists&&s.data();if(v&&v.skin){look={skin:v.skin,pat:v.pat||"none",cols:v.cols||look.cols||2,limits:v.limits||look.limits||{},font:v.font||look.font||"maru"};applyLook();render();try{localStorage.setItem(SKEY,JSON.stringify(look))}catch(e){}}}).catch(()=>{});
+    state.lookDoc.get().then(s=>{const v=s.exists&&s.data();if(v&&v.skin){look={skin:v.skin,pat:v.pat||"none",cols:v.cols||look.cols||2,limits:v.limits||look.limits||{},font:v.font||look.font||"maru",paper:v.paper||look.paper||"plain"};applyLook();render();try{localStorage.setItem(SKEY,JSON.stringify(look))}catch(e){}}}).catch(()=>{});
     c.use("assets").then(a=>{state.assets=a}).catch(()=>{});
     state.col.onSnapshot(snap=>{
       state.items=snap.docs.map(d=>({id:d.id,...d.data()}));
